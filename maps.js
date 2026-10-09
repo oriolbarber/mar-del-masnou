@@ -2,6 +2,7 @@
 /* ============ Mar del Masnou · mapes en directe ============ */
 const RV_API = "https://api.rainviewer.com/public/weather-maps.json";
 const WINDY_PRODUCT = {wind:"ecmwf", gust:"ecmwf", waves:"ecmwfWaves", rain:"ecmwf", clouds:"ecmwf"};
+const CAM_URL = "https://plataforma.streamingbarcelona.com/masnou/es/embed/";
 const MB_URL = "https://www.meteoblue.com/ca/weather/maps/widget/41.476N2.318E?windAnimation=1&gust=1&satellite=1&cloudsAndPrecipitation=1&temperature=1&sunshine=0&extremeForecastIndex=0&geoloc=fixed&tempunit=C&windunit=kn&lengthunit=metric&zoom=8&autowidth=auto";
 
 let mapKind = "mb", rvMap = null, rvFrames = [], rvLayers = [], rvIdx = 0, rvTimer = null, rvKind = null, rvLoadedAt = 0, windyOv = "wind";
@@ -55,6 +56,9 @@ function showMapKind(k){
   $("mapRadar").hidden = k !== "radar";
   $("mapWindy").hidden = k !== "windy";
   $("mapMb").hidden = k !== "mb";
+  $("mapCam").hidden = k !== "cam";
+  if(k === "cam" && !$("camFrame").src) $("camFrame").src = CAM_URL;
+  if(k !== "cam" && $("camFrame").src){ $("camFrame").removeAttribute("src"); } // atura el vídeo (dades) quan no es mira
   if(k === "radar" || k === "sat"){ setTimeout(() => { rvMap && rvMap.invalidateSize(); rvLoad(k); }, 0); }
   else rvPlay(false);
   if(k === "windy" && !$("windyFrame").src) $("windyFrame").src = windyUrl(windyOv);
@@ -67,5 +71,5 @@ $("windySeg").addEventListener("click", e => { const b = e.target.closest("butto
 $("radarPlay").addEventListener("click", () => rvPlay(!rvTimer));
 $("radarSlider").addEventListener("input", e => { rvPlay(false); rvShow(+e.target.value); });
 $("radarPlay").innerHTML = PLAY_IC;
-window.addEventListener("mm-view", e => { if(e.detail === "map") showMapKind(mapKind); else rvPlay(false); });
+window.addEventListener("mm-view", e => { if(e.detail === "map") showMapKind(mapKind); else { rvPlay(false); $("camFrame").removeAttribute("src"); } });
 document.addEventListener("visibilitychange", () => { if(document.visibilityState !== "visible") rvPlay(false); });
