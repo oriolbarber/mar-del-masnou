@@ -91,11 +91,21 @@ function scoreHour(p, c){
   if(p.gust!=null && p.gust > c.gust){ s = Math.min(s, 25); flags.push("Ratxes fortes"); }
   else if(p.gust!=null && p.wind!=null && p.gust - p.wind > 10){ s -= 15; flags.push("Racheig"); }
   if(isOffshore(p.dir) && p.wind >= 6){ s = p.wind >= 10 ? Math.min(s-25, 40) : s-25; flags.push("Terral"); }
+  const rain = p.code!=null && ((p.code>=61 && p.code<=67) || (p.code>=80 && p.code<=82));
   if(p.code!=null && p.code>=95){ s = 0; flags.push("Tempesta"); }
-  else if(p.pp!=null && p.pp>=60){ s -= 15; flags.push("Pluja"); }
-  return {score:Math.max(0, Math.min(100, Math.round(s))), flags};
+  else if(rain){ s = 0; flags.push("Pluja"); }
+  else if(p.code!=null && p.code>=51 && p.code<=57){ s -= 15; flags.push("Plugim"); }
+  else if(p.pp!=null && p.pp>=60){ s -= 15; flags.push("Probable pluja"); }
+  // «Poc vent»: el problema és només que no bufa prou (no és perillós), a diferència de «No apte»
+  const hard = flags.some(f => f === "Ratxes fortes" || f === "Tempesta" || f === "Pluja");
+  const low = p.wind < c.iMin && !hard && waveScore(p.wave, c) >= 35;
+  return {score:Math.max(0, Math.min(100, Math.round(s))), flags, low};
 }
-const verdict = s => s==null ? {k:"no",t:"Sense dades"} : VERD.find(v => s >= v.min);
+const POC = {k:"poc", t:"Poc vent"};
+const verdict = o => { const sc = (o && typeof o === "object") ? o.score : o;
+  if(sc==null) return {k:"no",t:"Sense dades"};
+  if(sc < 35 && o && typeof o === "object" && o.low) return POC;
+  return VERD.find(v => sc >= v.min); };
 
 /* ---------- dades ---------- */
 const URL_FC = `https://api.open-meteo.com/v1/forecast?latitude=${LOC.lat}&longitude=${LOC.lon}`+
@@ -173,7 +183,7 @@ function slotAgg(date, slot, c){
   const ss = sc.map(s=>s.score).filter(s=>s!=null);
   const score = ss.length ? Math.round(Math.min(ss.reduce((a,b)=>a+b,0)/ss.length, Math.min(...ss)+25)) : null;
   return {wind:avg(h=>h.wind), gust:max(h=>h.gust), dir, wave:max(h=>h.wave), per:avg(h=>h.per), temp:avg(h=>h.temp), sst:avg(h=>h.sst),
-    code:max(h=>h.code), score, flags:[...new Set(sc.flatMap(s=>s.flags))], past: hs[hs.length-1].t < nowKey()};
+    code:max(h=>h.code), score, flags:[...new Set(sc.flatMap(s=>s.flags))], low: sc.filter(x=>x.low).length*2 >= sc.length && !sc.some(x=>x.score!=null && x.score<35 && !x.low), past: hs[hs.length-1].t < nowKey()};
 }
 
 /* ---------- indicador d'idoneïtat ---------- */
@@ -241,7 +251,7 @@ function hourChart(date, h0, h1, wide){
     for(let w=0; w<=maxW+1e-9; w+=0.5) g += `<text x="${W-R+6}" y="${yW(w)+4}" font-size="11" fill="var(--sea)" font-family="IBM Plex Mono,monospace">${w.toLocaleString("ca")}</text>`;
     g += `<text x="${L-6}" y="12" text-anchor="end" font-size="10" fill="var(--muted)" font-family="Rajdhani,sans-serif" font-weight="700">KN</text><text x="${W-R+6}" y="12" font-size="10" fill="var(--sea)" font-family="Rajdhani,sans-serif" font-weight="700">M</text>`; }
   hrs.forEach((x,j) => {
-    const [px,py] = pts[j], k = verdict(x.s.score).k;
+    const [px,py] = pts[j], k = verdict(x.s).k;
     g += `<circle cx="${px}" cy="${py}" r="${wide?4:3.5}" fill="var(--${k})" stroke="var(--surface)" stroke-width="1.5"/>`;
     const showLbl = wide || j%2===0;
     if(showLbl) g += `<text x="${px}" y="${py-9}" text-anchor="middle" font-size="${wide?11:10}" font-weight="700" fill="var(--ink)" font-family="IBM Plex Mono,monospace">${r0(x.p.wind)}</text>`;
@@ -253,7 +263,7 @@ function hourChart(date, h0, h1, wide){
 const chartLegend = wide => `<div class="legend"><span><span class="sw" style="background:var(--accent)"></span>Vent mitjà (kn)</span><span><span class="sw" style="background:var(--muted)"></span>Ratxa</span>${wide?`<span><span class="sw" style="background:var(--sea)"></span>Onada (m)</span>`:""}<span><span class="sw" style="background:var(--ideal-t);height:10px"></span>Vent ideal ${esc(DEFAULTS[act].short)}</span><span><span class="vd" style="background:var(--ideal)"></span>Punt = idoneïtat</span></div>`;
 function hourTable(date, h0, h1){
   const c = crit[act], nk = nowKey(); let rows = "";
-  for(let h=h0; h<=h1; h++){ const p = DATA.hours[hourKey(date,h)]; if(!p) continue; const s = scoreHour(p,c), v = verdict(s.score);
+  for(let h=h0; h<=h1; h++){ const p = DATA.hours[hourKey(date,h)]; if(!p) continue; const s = scoreHour(p,c), v = verdict(s);
     rows += `<tr class="${p.t===nk?"now-row":""}"><td class="l">${h}:00</td><td class="l"><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span></td>
       <td class="l"><span style="display:inline-flex;align-items:center;gap:4px">${arrow(p.dir,14)}${windAbbr(p.dir)}</span></td>
       <td><b>${r0(p.wind)}</b></td><td>${r0(p.gust)}</td><td>${r1(p.wave)}</td><td>${r1(p.per)}</td><td>${r0(p.temp)}°</td><td>${r1(p.sst)}°</td><td>${p.pp ?? "–"}%</td>
@@ -280,7 +290,7 @@ function renderNow(){
   const n = live ? Object.assign({}, fc, {wind:ST.wind, gust:ST.gust, dir:ST.dir, temp:ST.temp}) : fc;
   if(n.wind==null){ $("hero").hidden = true; return; }
   $("hero").hidden = false;
-  const s = scoreHour(n, c), v = verdict(s.score);
+  const s = scoreHour(n, c), v = verdict(s);
   const mins = live ? Math.max(0, Math.round((Date.now()-ST.at)/60000)) : null;
   $("src").className = "src"+(live?" live":"");
   $("src").innerHTML = `<span class="dot"></span>${live ? `${STATIONS[stKey].name} · fa ${mins} min` : `${STATIONS[stKey].name}: sense dades · model`}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M7 4l-4 4 4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>`;
@@ -301,7 +311,7 @@ function renderNow(){
   const td = todayDate();
   // Vista de lletra gran: només xifres i paraules, sense indicadors gràfics
   const row = (k, v, u, x) => `<div class="brow"><span class="bk">${k}</span><span class="bv">${v}${u?`<small>${u}</small>`:""}</span>${x?`<span class="bx">${x}</span>`:""}</div>`;
-  const bslots = SLOTS.map(sl => { const a = slotAgg(td, sl, c); if(!a) return ""; const vv = verdict(a.score);
+  const bslots = SLOTS.map(sl => { const a = slotAgg(td, sl, c); if(!a) return ""; const vv = verdict(a);
     return `<div class="bslot k-${vv.k}${a.past?" past":""}"><span class="bk">${sl.label}</span><span class="tag"><span class="vd"></span>${vv.t}</span><span class="bw">${r0(a.wind)}<small>/${r0(a.gust)} kn</small></span><span class="bx">${windName(a.dir)} · ${r1(a.wave)} m</span></div>`; }).join("");
   $("bigNow").innerHTML = `<div class="bverdict k-${v.k}"><span>${v.t}</span><small>${s.score ?? "–"}/100</small></div>
     ${s.flags.length ? `<div class="flags">${s.flags.map(f => `<span class="flag">${esc(f)}</span>`).join("")}</div>` : ""}
@@ -313,7 +323,7 @@ function renderNow(){
     ${row("Posta del sol", DATA.daily.sunset[i]?.slice(11,16) || "–", "")}
     <div class="bslots"><span class="bk">Avui</span>${bslots}</div>`;
   const slots = SLOTS.map(sl => { const a = slotAgg(td, sl, c); if(!a) return "";
-    const vv = verdict(a.score);
+    const vv = verdict(a);
     return `<div class="sl k-${vv.k}${a.past?" past":""}"><div class="h">${sl.label}<span class="tag"><span class="vd"></span>${vv.t}</span></div>
       <div class="w">${arrow(a.dir,13)}${r0(a.wind)}<small>/${r0(a.gust)} kn</small></div><div class="o">${windAbbr(a.dir)} · ${r1(a.wave)} m</div></div>`; }).join("");
   $("outlook").innerHTML = `<div class="card-h" style="margin-bottom:4px"><span class="lbl">Avui · vent per hores</span>${wxIcon(fc.code,18)}</div>
@@ -323,14 +333,14 @@ function renderHours(){
   const td = todayDate(); const start = Math.max(7, Math.min(21, +nowKey().slice(11,13) - 1));
   $("hoursBody").innerHTML = `<div class="chart wide">${hourChart(td, 7, 21, true)}</div>${chartLegend(true)}${hourTable(td, start, 21)}`;
   const best = SLOTS.map(sl => ({sl, a:slotAgg(td, sl, crit[act])})).filter(x=>x.a && !x.a.past).sort((a,b)=>b.a.score-a.a.score)[0];
-  $("peekHours").textContent = best ? "Millor: "+best.sl.label.toLowerCase()+" · "+verdict(best.a.score).t.toLowerCase() : "";
+  $("peekHours").textContent = best ? "Millor: "+best.sl.label.toLowerCase()+" · "+verdict(best.a).t.toLowerCase() : "";
 }
 function dayName(date, i){ const d = new Date(date+"T12:00:00"); return {name: i===0 ? "Avui" : i===1 ? "Demà" : DAYS_L[d.getDay()], dm: d.getDate()+" "+MONTHS[d.getMonth()]}; }
 function renderWeek(){
   const c = crit[act], D = DATA.daily; let html = "", good = 0;
   D.time.forEach((date, i) => {
     const dn = dayName(date, i), aggs = SLOTS.map(sl => slotAgg(date, sl, c));
-    const pills = aggs.map((a,j) => { if(!a) return `<span class="pill k-no" style="opacity:.3">–</span>`; const vv = verdict(a.score); if(!a.past && a.score>=60) good++;
+    const pills = aggs.map((a,j) => { if(!a) return `<span class="pill k-no" style="opacity:.3">–</span>`; const vv = verdict(a); if(!a.past && a.score>=60) good++;
       return `<span class="pill k-${vv.k}" title="${SLOTS[j].label}: ${vv.t}"${a.past?' style="opacity:.45"':""}>${SLOTS[j].ab}</span>`; }).join("");
     const ws = aggs.filter(Boolean).map(a=>a.wind), wv = aggs.filter(Boolean).map(a=>a.wave).filter(x=>x!=null);
     const domDir = aggs.filter(Boolean).sort((a,b)=>b.wind-a.wind)[0]?.dir;
