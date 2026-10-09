@@ -378,7 +378,7 @@ function hourChart(date, h0, h1, wide, Wpx){
   const X = j => L + dx*j, yK = k => T + ph - (k/maxK)*ph, yW = w => T + ph - (w/maxW)*ph;
   const fs = big ? 13 : 11, thin = dx < 24;  // poc espai entre hores: etiquetes d'hora alternes
   const id = "g"+Math.random().toString(36).slice(2,7);
-  let g = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".35"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>`;
+  let g = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--ink)" stop-opacity=".16"/><stop offset="1" stop-color="var(--ink)" stop-opacity="0"/></linearGradient></defs>`;
   if(c.iMin < maxK){ const top = yK(Math.min(c.iMax, maxK)); g += `<rect x="${L}" y="${top}" width="${pw}" height="${yK(c.iMin)-top}" fill="var(--ideal-t)" opacity=".7"/>`; }
   if(wide) for(let k=0;k<=maxK;k+=(maxK > 25 ? 10 : 5)) g += `<line x1="${L}" x2="${W-R}" y1="${yK(k)}" y2="${yK(k)}" stroke="var(--grid)"/><text x="${L-6}" y="${yK(k)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${k}</text>`;
   else g += `<line x1="${L}" x2="${W-R}" y1="${yK(0)}" y2="${yK(0)}" stroke="var(--grid)"/>`;
@@ -391,16 +391,16 @@ function hourChart(date, h0, h1, wide, Wpx){
   if(lastObs >= 0){
     // previsió que hi havia per a les hores ja passades (fina, per comparar)
     const pf = hrs.slice(0, lastObs+1).map((x,j) => [X(j), yK((x.p.fc||x.p).wind||0)]);
-    if(pf.length > 1) g += `<polyline points="${pf.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 3" opacity=".6"/>`;
-    if(lastObs < n-1) g += `<polyline points="${pts.slice(lastObs).map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>`;
+    if(pf.length > 1) g += `<polyline points="${pf.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="3 3" opacity=".6"/>`;
+    if(lastObs < n-1) g += `<polyline points="${pts.slice(lastObs).map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>`;
     g += `<polyline points="${pts.slice(0, lastObs+1).map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-linejoin="round"/>`;
-  } else g += `<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>`;
+  } else g += `<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>`;
   // cursor de l'hora seleccionada (es mou des de JS sense redibuixar)
   g += `<g class="hsel" style="display:none"><rect x="${-dx/2}" y="${T-18}" width="${dx}" height="${ph+18}" fill="var(--ink)" opacity=".07" rx="4"/><line x1="0" x2="0" y1="${T-18}" y2="${yK(0)}" stroke="var(--ink)" stroke-width="1.5"/></g>`;
   if(wide){ const wp = hrs.map((x,j) => x.p.wave==null ? null : [X(j), yW(x.p.wave)]).filter(Boolean);
-    if(wp.length>1) g += `<polyline points="${wp.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--sea)" stroke-width="2" stroke-dasharray="1 0"/>`;
-    for(let w=0; w<=maxW+1e-9; w+=0.5) g += `<text x="${W-R+6}" y="${yW(w)+4}" font-size="11" fill="var(--sea)" font-family="IBM Plex Mono,monospace">${w.toLocaleString("ca")}</text>`;
-    g += `<text x="${L-6}" y="12" text-anchor="end" font-size="10" fill="var(--muted)" font-family="Rajdhani,sans-serif" font-weight="700">KN</text><text x="${W-R+6}" y="12" font-size="10" fill="var(--sea)" font-family="Rajdhani,sans-serif" font-weight="700">M</text>`; }
+    if(wp.length>1) g += `<polyline points="${wp.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--wave-l)" stroke-width="2.5" stroke-dasharray="1 0"/>`;
+    for(let w=0; w<=maxW+1e-9; w+=0.5) g += `<text x="${W-R+6}" y="${yW(w)+4}" font-size="11" fill="var(--wave-l)" font-family="IBM Plex Mono,monospace">${w.toLocaleString("ca")}</text>`;
+    g += `<text x="${L-6}" y="12" text-anchor="end" font-size="10" fill="var(--muted)" font-family="Rajdhani,sans-serif" font-weight="700">KN</text><text x="${W-R+6}" y="12" font-size="10" fill="var(--wave-l)" font-family="Rajdhani,sans-serif" font-weight="700">M</text>`; }
   hrs.forEach((x,j) => {
     const [px,py] = pts[j], k = verdict(x.s).k, kw = lvWind(x.p.wind, c);
     g += `<circle cx="${px}" cy="${py}" r="${wide?4.5:3.5}" fill="var(--${k})" stroke="${x.p.obs ? "var(--accent-2)" : "var(--surface)"}" stroke-width="${x.p.obs ? 2 : 1.5}"/>`;
@@ -449,7 +449,7 @@ document.addEventListener("pointerdown", e => { const svg = e.target.closest && 
 document.addEventListener("pointermove", e => { if(hcDrag) hcPick(hcDrag, e.clientX); });
 ["pointerup","pointercancel"].forEach(t => document.addEventListener(t, () => { hcDrag = null; }));
 document.addEventListener("click", e => { const tr = e.target.closest && e.target.closest("tr[data-k]"); if(tr) selectHour(tr.dataset.k, "table"); });
-const chartLegend = wide => `<details class="legend-d"><summary>Què és cada línia?</summary><div class="legend"><span><span class="sw" style="background:var(--accent-2)"></span>Vent mesurat</span><span><span class="sw" style="background:var(--accent)"></span>Vent previst (kn)</span><span><span class="sw" style="background:var(--muted)"></span>Ratxa</span>${wide?`<span><span class="sw" style="background:var(--sea)"></span>Onada (m)</span>`:""}<span><span class="sw" style="background:var(--ideal-t);height:10px"></span>Vent ideal ${esc(DEFAULTS[act].short)}</span></div>
+const chartLegend = wide => `<details class="legend-d"><summary>Què és cada línia?</summary><div class="legend"><span><span class="sw" style="background:var(--accent-2)"></span>Vent mesurat</span><span><span class="sw" style="background:var(--ink)"></span>Vent previst (kn)</span><span><span class="sw" style="background:var(--muted)"></span>Ratxa</span>${wide?`<span><span class="sw" style="background:var(--wave-l)"></span>Onada (m)</span>`:""}<span><span class="sw" style="background:var(--ideal-t);height:10px"></span>Vent ideal ${esc(DEFAULTS[act].short)}</span></div>
   <div class="legend lv-legend"><span><span class="vd" style="background:var(--ideal)"></span>Bo</span><span><span class="vd" style="background:var(--marg)"></span>Amb limitacions</span><span><span class="vd" style="background:var(--no)"></span>No adequat</span></div>
   <p class="note">Toca o arrossega el gràfic per veure les dades d'una hora a la targeta de sobre.</p></details>`;
 function hourTable(date, h0, h1){
