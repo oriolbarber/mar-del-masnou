@@ -370,16 +370,17 @@ function hourChart(date, h0, h1, wide, Wpx){
   for(let h=h0; h<=h1; h++){ const p = hourAt(date,h); if(p) hrs.push({h, p, s:scoreHour(p,c)}); }
   if(hrs.length < 2) return "";
   const big = document.documentElement.dataset.size === "big";
-  const W = wide ? (Wpx || 760) : 380, Hh = wide ? (big ? 270 : 240) : 108, L = wide ? 30 : 6, R = wide ? 30 : 6, T = wide ? 26 : 22, B = wide ? 40 : 20;
+  const W = wide ? (Wpx || 760) : 380, Hh = wide ? (big ? 200 : 170) : 108, L = wide ? 26 : 6, R = wide ? 30 : 6, T = wide ? 22 : 22, B = wide ? 36 : 20;
   const pw = W-L-R, ph = Hh-T-B, n = hrs.length, dx = pw/(n-1);
-  const maxK = Math.max(20, Math.ceil(Math.max(...hrs.map(x=>x.p.gust||0), c.iMax)/5)*5);
-  const maxW = Math.max(1.5, Math.ceil(Math.max(...hrs.map(x=>x.p.wave||0), c.wMax)*2)/2);
+  // escala ajustada a les dades que es veuen (no als criteris), perquè el gràfic sigui baixet i aprofiti l'alçada
+  const maxK = Math.max(10, Math.ceil(Math.max(...hrs.map(x=>Math.max(x.p.gust||0, x.p.wind||0)))*1.1/5)*5);
+  const maxW = Math.max(0.5, Math.ceil(Math.max(...hrs.map(x=>x.p.wave||0))*1.15*2)/2);
   const X = j => L + dx*j, yK = k => T + ph - (k/maxK)*ph, yW = w => T + ph - (w/maxW)*ph;
   const fs = big ? 13 : 11, thin = dx < 24;  // poc espai entre hores: etiquetes d'hora alternes
   const id = "g"+Math.random().toString(36).slice(2,7);
   let g = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".35"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>`;
-  g += `<rect x="${L}" y="${yK(c.iMax)}" width="${pw}" height="${yK(c.iMin)-yK(c.iMax)}" fill="var(--ideal-t)" opacity=".7"/>`;
-  if(wide) for(let k=0;k<=maxK;k+=5) g += `<line x1="${L}" x2="${W-R}" y1="${yK(k)}" y2="${yK(k)}" stroke="var(--grid)"/><text x="${L-6}" y="${yK(k)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${k}</text>`;
+  if(c.iMin < maxK){ const top = yK(Math.min(c.iMax, maxK)); g += `<rect x="${L}" y="${top}" width="${pw}" height="${yK(c.iMin)-top}" fill="var(--ideal-t)" opacity=".7"/>`; }
+  if(wide) for(let k=0;k<=maxK;k+=(maxK > 25 ? 10 : 5)) g += `<line x1="${L}" x2="${W-R}" y1="${yK(k)}" y2="${yK(k)}" stroke="var(--grid)"/><text x="${L-6}" y="${yK(k)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${k}</text>`;
   else g += `<line x1="${L}" x2="${W-R}" y1="${yK(0)}" y2="${yK(0)}" stroke="var(--grid)"/>`;
   const nk = nowKey(), ni = hrs.findIndex(x => x.p.t === nk);
   if(ni >= 0) g += `<line x1="${X(ni)}" x2="${X(ni)}" y1="${T-14}" y2="${yK(0)}" stroke="var(--accent-2)" stroke-width="1.5" stroke-dasharray="3 3"/><text x="${X(ni)}" y="${T-16}" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-2)" font-family="Rajdhani,sans-serif" letter-spacing="1">ARA</text>`;
@@ -448,8 +449,9 @@ document.addEventListener("pointerdown", e => { const svg = e.target.closest && 
 document.addEventListener("pointermove", e => { if(hcDrag) hcPick(hcDrag, e.clientX); });
 ["pointerup","pointercancel"].forEach(t => document.addEventListener(t, () => { hcDrag = null; }));
 document.addEventListener("click", e => { const tr = e.target.closest && e.target.closest("tr[data-k]"); if(tr) selectHour(tr.dataset.k, "table"); });
-const chartLegend = wide => `<div class="legend"><span><span class="sw" style="background:var(--accent-2)"></span>Vent mesurat</span><span><span class="sw" style="background:var(--accent)"></span>Vent previst (kn)</span><span><span class="sw" style="background:var(--muted)"></span>Ratxa</span>${wide?`<span><span class="sw" style="background:var(--sea)"></span>Onada (m)</span>`:""}<span><span class="sw" style="background:var(--ideal-t);height:10px"></span>Vent ideal ${esc(DEFAULTS[act].short)}</span></div>
-  <div class="legend lv-legend"><span><span class="vd" style="background:var(--ideal)"></span>Bo</span><span><span class="vd" style="background:var(--marg)"></span>Amb limitacions</span><span><span class="vd" style="background:var(--no)"></span>No adequat</span></div>`;
+const chartLegend = wide => `<details class="legend-d"><summary>Què és cada línia?</summary><div class="legend"><span><span class="sw" style="background:var(--accent-2)"></span>Vent mesurat</span><span><span class="sw" style="background:var(--accent)"></span>Vent previst (kn)</span><span><span class="sw" style="background:var(--muted)"></span>Ratxa</span>${wide?`<span><span class="sw" style="background:var(--sea)"></span>Onada (m)</span>`:""}<span><span class="sw" style="background:var(--ideal-t);height:10px"></span>Vent ideal ${esc(DEFAULTS[act].short)}</span></div>
+  <div class="legend lv-legend"><span><span class="vd" style="background:var(--ideal)"></span>Bo</span><span><span class="vd" style="background:var(--marg)"></span>Amb limitacions</span><span><span class="vd" style="background:var(--no)"></span>No adequat</span></div>
+  <p class="note">Toca o arrossega el gràfic per veure les dades d'una hora a la targeta de sobre.</p></details>`;
 function hourTable(date, h0, h1){
   const c = crit[act], nk = nowKey(); let rows = "";
   for(let h=h0; h<=h1; h++){ const p = hourAt(date,h); if(!p) continue; const s = scoreHour(p,c), v = verdict(s);
