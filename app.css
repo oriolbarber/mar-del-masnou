@@ -98,7 +98,7 @@ h2,h3{font-family:var(--f-head);font-weight:700;margin:0;letter-spacing:.03em}
 .sl[class*="k-"]{border-color:var(--k);background:var(--kt)}
 .tag{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-head);font-weight:700;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;color:var(--k);white-space:nowrap}
 .chart svg{display:block;width:100%;height:auto}
-.chart.wide{overflow-x:auto}
+.chart.wide{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain}
 .chart.wide svg{min-width:560px}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.76rem;color:var(--muted);font-weight:600;margin-top:4px}
 .legend span{display:inline-flex;align-items:center;gap:5px}
@@ -120,7 +120,7 @@ details.sec>summary .chev{margin-left:auto;transition:transform .15s;flex:none;c
 details.sec[open]>summary .chev{transform:rotate(180deg)}
 .sec-body{padding:0 14px 14px;display:flex;flex-direction:column;gap:12px}
 
-.tbl{overflow-x:auto}
+.tbl{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain}
 table{border-collapse:collapse;font-size:.84rem;min-width:100%}
 th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--grid);white-space:nowrap;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 th{font-family:var(--f-head);font-size:.76rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--line)}
@@ -366,19 +366,26 @@ td small.obs{display:block;font-family:var(--f-body);font-size:.68rem;font-weigh
 .wm-cap span{color:var(--muted);font-weight:600;font-size:.76rem}
 .wm-cap span.obs{color:var(--accent-2)}
 .wm-wrap{position:relative}
-.wm-map{height:220px;border-radius:14px}
-.wm-now{position:absolute;left:8px;bottom:8px;z-index:500;display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 10px;font-size:.8rem;color:var(--muted);font-weight:600;box-shadow:var(--shadow);max-width:calc(100% - 16px)}
+.wm-map{height:240px;border-radius:14px;touch-action:pan-y;cursor:default}
+.wm-map .leaflet-marker-pane{z-index:650}
+.wm-pin{background:none;border:0;pointer-events:none}
+.wm-pivot{position:relative;width:0;height:0}
+.wm-dot{position:absolute;left:-7px;top:-7px;width:14px;height:14px;border-radius:50%;background:#dc3427;border:3px solid #fff;box-shadow:0 0 0 1px #0006,0 2px 6px #0007;z-index:3}
+/* etiqueta en forma de bandereta: la punta toca el punt i el cos surt cap a on ve el vent/onada */
+.wm-flag{position:absolute;left:0;top:-15px;height:30px;display:flex;align-items:center;padding-left:6px;transform-origin:0 50%;transform:rotate(var(--a,0deg));transition:transform .65s cubic-bezier(.34,1.3,.5,1);filter:drop-shadow(0 2px 3px #0008);z-index:2;white-space:nowrap}
+.wm-flag::before{content:"";flex:none;width:0;height:0;border-top:15px solid transparent;border-bottom:15px solid transparent;border-right:13px solid var(--bg)}
+.wm-flag .wm-txt{display:flex;align-items:baseline;gap:5px;height:30px;padding:0 10px 0 4px;background:var(--bg);color:var(--fg);border-radius:0 8px 8px 0;font:600 12px/30px var(--f-body);transition:transform .45s ease}
+.wm-flag.flip .wm-txt{transform:rotate(180deg)}
+.wm-flag .wm-txt b{font-family:var(--f-mono);font-size:16px}
+.wm-flag .wm-txt small{font-size:11px;font-weight:700;opacity:.8}
+.wm-flag.wave{z-index:1}
+.wm-flag.wave .wm-txt{height:26px;line-height:26px}
+.wm-flag.wave::before{border-top-width:13px;border-bottom-width:13px}
+.wm-flag.wave{top:-13px;height:26px}
+.wm-now{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:.8rem;color:var(--muted);font-weight:600}
 .wm-now b{color:var(--ink)}
-.wm-big{display:flex;align-items:center;gap:4px;color:var(--ink)}
-.wm-big svg{color:var(--c)}
-.wm-big b{font-family:var(--f-mono);font-size:1.6rem;line-height:1}
-.wm-big small{font-size:.8rem;color:var(--muted)}
-.wm-icon{background:none;border:0}
-.wm-badge{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:4px;background:var(--c);color:#0b1220;border-radius:999px;padding:3px 10px 3px 6px;white-space:nowrap;font:600 12px/1.1 var(--f-body);box-shadow:0 2px 8px #0005;border:2px solid #fff}
-.wm-badge b{font-family:var(--f-mono);font-size:15px}
-.wm-badge small{display:block;font-size:10px;font-weight:600;opacity:.8}
-.wm-badge.wave{background:#1d6fd6;color:#fff}
-.wm-scroll{overflow-x:auto;margin-top:10px;border:1px solid var(--line);border-radius:12px;touch-action:pan-x;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+.wm-key{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c);margin-right:5px;vertical-align:-1px}
+.wm-scroll{overflow-x:auto;overflow-y:hidden;margin-top:10px;border:1px solid var(--line);border-radius:12px;touch-action:auto;overscroll-behavior-x:contain;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
 #wmTable{border-collapse:separate;border-spacing:0;font-size:.82rem;min-width:max-content}
 #wmTable th,#wmTable td{padding:5px 0;width:38px;min-width:38px;text-align:center;border-bottom:1px solid var(--grid);font-family:var(--f-mono);white-space:nowrap;cursor:pointer;user-select:none}
 #wmTable th.wm-lbl{position:sticky;left:0;z-index:2;background:var(--surface);width:64px;min-width:64px;text-align:left;padding-left:8px;font-family:var(--f-head);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:default;border-right:1px solid var(--line)}
@@ -395,4 +402,5 @@ td small.obs{display:block;font-family:var(--f-body);font-size:.68rem;font-weigh
 :root[data-size="big"] #wmTable{font-size:1.05rem}
 :root[data-size="big"] #wmTable th,:root[data-size="big"] #wmTable td{width:48px;min-width:48px;padding:8px 0}
 :root[data-size="big"] .wm-now{font-size:1rem}
-:root[data-size="big"] .wm-big b{font-size:2.2rem}
+:root[data-size="big"] .wm-flag .wm-txt{font-size:14px}
+:root[data-size="big"] .wm-flag .wm-txt b{font-size:19px}

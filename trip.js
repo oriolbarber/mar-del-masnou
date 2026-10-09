@@ -202,10 +202,12 @@ function summarize(trip){
 
 /* ---------- mapes ---------- */
 function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || "#3cd0ff"; }
-function baseMap(el){
+// scroll:true → al mòbil un dit fa desplaçar l'app (el mapa només es mou amb dos dits / pessic)
+function baseMap(el, scroll){
   if(!window.L) return null;
   el.innerHTML = "";
-  const m = L.map(el, {zoomControl:true, attributionControl:true}).setView(HOME, 14);
+  const free = scroll && L.Browser.mobile;
+  const m = L.map(el, {zoomControl:true, attributionControl:true, dragging:!free, tap:!free}).setView(HOME, 14);
   m.attributionControl.setPrefix(false);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:18, className:"base-tiles", attribution:"© OpenStreetMap"}).addTo(m);
   L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {maxZoom:18, attribution:"© OpenSeaMap"}).addTo(m);
@@ -225,7 +227,7 @@ function destroyLiveMap(){ if(liveMap){ liveMap.remove(); liveMap = null; liveLi
 function updateLiveMap(){
   const el = $("liveMap"), P = LIVE.pts;
   if(!window.L){ svgTrack(el, P); return; }
-  if(!liveMap){ liveMap = baseMap(el); liveLine = L.polyline([], {color: cssVar("--accent"), weight:4}).addTo(liveMap); }
+  if(!liveMap){ liveMap = baseMap(el, true); liveLine = L.polyline([], {color: cssVar("--accent"), weight:4}).addTo(liveMap); }
   if(!P.length) return;
   const ll = P.map(p => [p.lat, p.lon]); liveLine.setLatLngs(ll);
   const cur = ll[ll.length-1];
@@ -235,7 +237,7 @@ function updateLiveMap(){
 function tripMap(el, trip){
   const P = trip.pts;
   if(!window.L){ svgTrack(el, P); return null; }
-  const m = baseMap(el);
+  const m = baseMap(el, true);
   if(P.length < 2){ if(P.length) L.circleMarker([P[0].lat,P[0].lon], {radius:6}).addTo(m); return m; }
   const seg = segments(trip), groups = SPEED_COLORS.map(() => []);
   seg.forEach(s => { const i = SPEED_BINS.findIndex(b => s.smooth < b); groups[i < 0 ? 4 : i].push([[s.a.lat,s.a.lon],[s.b.lat,s.b.lon]]); });
