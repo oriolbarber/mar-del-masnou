@@ -193,6 +193,7 @@ function baseMap(el){
   if(!window.L) return null;
   el.innerHTML = "";
   const m = L.map(el, {zoomControl:true, attributionControl:true}).setView(HOME, 14);
+  m.attributionControl.setPrefix(false);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:18, className:"base-tiles", attribution:"© OpenStreetMap"}).addTo(m);
   L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {maxZoom:18, attribution:"© OpenSeaMap"}).addTo(m);
   return m;

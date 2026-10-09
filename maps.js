@@ -2,9 +2,9 @@
 /* ============ Mar del Masnou · mapes en directe ============ */
 const RV_API = "https://api.rainviewer.com/public/weather-maps.json";
 const WINDY_PRODUCT = {wind:"ecmwf", gust:"ecmwf", waves:"ecmwfWaves", rain:"ecmwf", clouds:"ecmwf"};
-const MB_URL = "https://www.meteoblue.com/ca/temps/mapes/widget/41.476N2.318E?windAnimation=1&gust=1&satellite=1&cloudsAndPrecipitation=1&temperature=1&sunshine=0&extremeForecastIndex=0&geoloc=fixed&tempunit=C&windunit=kn&lengthunit=metric&zoom=8&autowidth=auto";
+const MB_URL = "https://www.meteoblue.com/ca/weather/maps/widget/41.476N2.318E?windAnimation=1&gust=1&satellite=1&cloudsAndPrecipitation=1&temperature=1&sunshine=0&extremeForecastIndex=0&geoloc=fixed&tempunit=C&windunit=kn&lengthunit=metric&zoom=8&autowidth=auto";
 
-let mapKind = "radar", rvMap = null, rvFrames = [], rvLayers = [], rvIdx = 0, rvTimer = null, rvKind = null, rvLoadedAt = 0, windyOv = "wind";
+let mapKind = "mb", rvMap = null, rvFrames = [], rvLayers = [], rvIdx = 0, rvTimer = null, rvKind = null, rvLoadedAt = 0, windyOv = "wind";
 
 const PLAY_IC = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>`;
 const PAUSE_IC = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`;
@@ -34,13 +34,13 @@ async function rvLoad(kind){
     rvLayers.forEach(l => rvMap.removeLayer(l));
     rvFrames = kind === "sat" ? (j.satellite?.infrared || []) : [...(j.radar?.past || []), ...(j.radar?.nowcast || [])];
     const tile = kind === "sat" ? "/256/{z}/{x}/{y}/0/0_0.png" : "/256/{z}/{x}/{y}/2/1_1.png";
-    rvLayers = rvFrames.map(f => L.tileLayer(j.host + f.path + tile, {opacity:0, zIndex:10, maxNativeZoom:7, maxZoom:12, attribution:'<a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>'}).addTo(rvMap));
+    rvLayers = rvFrames.map(f => L.tileLayer(j.host + f.path + tile, {opacity:0, zIndex:10, maxNativeZoom:7, maxZoom:12, attribution:'RainViewer'}).addTo(rvMap));
     rvKind = kind; rvLoadedAt = Date.now();
     $("radarSlider").max = Math.max(0, rvFrames.length-1);
     $("radarTitle").textContent = kind === "sat" ? "Satèl·lit infraroig · núvols" : "Radar de pluja · últimes 2 h";
     $("radarNote").innerHTML = kind === "sat"
-      ? `Núvols vistos pel satèl·lit en infraroig: com més blancs, més alts i freds (tempestes). Font: <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>.`
-      : `Pluja detectada pels radars meteorològics, cada 10 minuts. Font: <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>.`;
+      ? `Núvols vistos pel satèl·lit en infraroig: com més blancs, més alts i freds (tempestes). Font: RainViewer.`
+      : `Pluja detectada pels radars meteorològics, cada 10 minuts. Font: RainViewer.`;
     if(!rvFrames.length){ $("radarTime").textContent = "Sense imatges"; return; }
     rvShow(rvFrames.length-1); rvPlay(true);
   }catch(e){ $("radarTime").textContent = "Sense connexió"; }
@@ -52,7 +52,7 @@ function windyUrl(ov){
 function showMapKind(k){
   mapKind = k;
   document.querySelectorAll("#mapSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.map === k)));
-  $("mapRadar").hidden = !(k === "radar" || k === "sat");
+  $("mapRadar").hidden = k !== "radar";
   $("mapWindy").hidden = k !== "windy";
   $("mapMb").hidden = k !== "mb";
   if(k === "radar" || k === "sat"){ setTimeout(() => { rvMap && rvMap.invalidateSize(); rvLoad(k); }, 0); }

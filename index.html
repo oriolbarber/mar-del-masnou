@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=7">
+<link rel="stylesheet" href="app.css?v=8">
 </head>
 <body>
 <div class="app">
@@ -85,8 +85,8 @@
   </details>
 
   <footer>
-    <div>Previsió: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (AROME/ECMWF; onatge MFWAM/ECMWF). Vent mesurat: estació <a href="https://ocata2.meteoelmasnou.cat/indexDesktop.php" target="_blank" rel="noopener">Ocata Vent</a> (o la d'<a href="https://www.meteoelmasnou.cat/" target="_blank" rel="noopener">El Masnou</a>). Vent en nusos, onades en metres.</div>
-    <div>Contrasta-ho: <a href="https://www.meteo.cat/" target="_blank" rel="noopener">Meteocat</a> · <a href="https://portus.puertos.es/" target="_blank" rel="noopener">Boia de Barcelona</a> · <a href="https://www.windguru.cz/" target="_blank" rel="noopener">Windguru</a></div>
+    <div>Previsió: Open-Meteo (AROME/ECMWF; onatge MFWAM/ECMWF). Vent mesurat: estació Ocata Vent (o la d'El Masnou). Vent en nusos, onades en metres.</div>
+    
     <div id="updated"></div>
   </footer>
 </section>
@@ -122,19 +122,23 @@
 <!-- ============ MAPES ============ -->
 <section class="view" id="view-map" hidden>
   <div class="seg maps-seg" role="group" aria-label="Tipus de mapa" id="mapSeg">
-    <button type="button" data-map="radar" aria-pressed="true">Radar</button>
-    <button type="button" data-map="sat" aria-pressed="false">Satèl·lit</button>
+    <button type="button" data-map="mb" aria-pressed="true">meteoblue</button>
+    <button type="button" data-map="radar" aria-pressed="false">Pluja</button>
     <button type="button" data-map="windy" aria-pressed="false">Vent</button>
-    <button type="button" data-map="mb" aria-pressed="false">meteoblue</button>
   </div>
-  <article class="card" id="mapRadar">
+  <article class="card" id="mapMb">
+    <div class="card-h"><span class="lbl">Mapes animats · meteoblue</span></div>
+    <div class="frame"><iframe id="mbFrame" title="Mapes animats de meteoblue" sandbox="allow-scripts allow-same-origin"></iframe></div>
+    <p class="note">Tria la capa al menú del mapa: animació del vent, ratxes, núvols i pluja, satèl·lit o temperatura. El botó ▶ anima la previsió. Font: meteoblue.</p>
+  </article>
+  <article class="card" id="mapRadar" hidden>
     <div class="card-h"><span class="lbl" id="radarTitle">Radar de pluja · últimes 2 h</span><span class="src" id="radarTime">–</span></div>
     <div class="map tall" id="radarMap"></div>
     <div class="player">
       <button class="ib" type="button" id="radarPlay" aria-label="Atura l'animació"></button>
       <input type="range" id="radarSlider" min="0" max="0" value="0" aria-label="Moment de la imatge">
     </div>
-    <p class="note" id="radarNote">Pluja detectada pels radars meteorològics. Font: <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>.</p>
+    <p class="note" id="radarNote">Pluja detectada pels radars meteorològics. Font: RainViewer.</p>
   </article>
   <article class="card" id="mapWindy" hidden>
     <div class="card-h"><span class="lbl">Previsió animada · Windy (ECMWF)</span></div>
@@ -145,24 +149,8 @@
       <button type="button" data-ov="rain" aria-pressed="false">Pluja</button>
       <button type="button" data-ov="clouds" aria-pressed="false">Núvols</button>
     </div>
-    <div class="frame"><iframe id="windyFrame" title="Mapa animat de Windy" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
-    <p class="note">Mou la línia de temps a sota del mapa per veure les properes hores i dies. Font: <a href="https://www.windy.com/41.476/2.318?wind,41.476,2.318,10" target="_blank" rel="noopener">Windy.com</a>.</p>
-  </article>
-  <article class="card" id="mapMb" hidden>
-    <div class="card-h"><span class="lbl">Mapes animats · meteoblue</span></div>
-    <div class="frame"><iframe id="mbFrame" title="Mapes animats de meteoblue" loading="lazy"></iframe></div>
-    <p class="note">Vent, ratxes, núvols i precipitació, satèl·lit i temperatura. Font: <a href="https://www.meteoblue.com/ca/temps/mapes/41.476N2.318E" target="_blank" rel="noopener">meteoblue</a>.</p>
-  </article>
-  <article class="card">
-    <div class="card-h"><span class="lbl">Més recursos en directe</span></div>
-    <div class="links">
-      <a href="https://www.lightningmaps.org/?lang=ca#m=oss;t=3;s=0;o=0;b=;ts=0;y=41.47;x=2.32;z=8;d=2;dl=2;dc=0;" target="_blank" rel="noopener">Llamps en directe <span>Blitzortung</span></a>
-      <a href="https://www.meteo.cat/prediccio/avisos" target="_blank" rel="noopener">Avisos Meteocat <span>Perill meteorològic</span></a>
-      <a href="https://www.meteoelmasnou.cat/plugins/radarEU/europeRadar.php" target="_blank" rel="noopener">Radar d'Europa <span>meteoelmasnou.cat</span></a>
-      <a href="https://www.meteoelmasnou.cat/plugins/satelliteImages/index.php" target="_blank" rel="noopener">Imatges de satèl·lit <span>meteoelmasnou.cat</span></a>
-      <a href="https://www.meteoelmasnou.cat/plugins/marine/index.php" target="_blank" rel="noopener">Trànsit marítim <span>meteoelmasnou.cat</span></a>
-      <a href="https://ocata2.meteoelmasnou.cat/indexDesktop.php" target="_blank" rel="noopener">Estació Ocata Vent <span>Tauler complet</span></a>
-    </div>
+    <div class="frame"><iframe id="windyFrame" title="Mapa animat de Windy" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+    <p class="note">Mou la línia de temps a sota del mapa per veure les properes hores i dies. Toca el mapa per veure els valors d'un punt. Font: Windy.com.</p>
   </article>
 </section>
 
@@ -188,8 +176,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=7"></script>
-<script src="trip.js?v=7"></script>
-<script src="maps.js?v=7"></script>
+<script src="app.js?v=8"></script>
+<script src="trip.js?v=8"></script>
+<script src="maps.js?v=8"></script>
 </body>
 </html>
