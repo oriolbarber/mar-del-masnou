@@ -153,10 +153,18 @@ function build(fc, ma){
 // fins a ~4 dies; més enllà, i per als camps que no té, s'omple amb l'automàtic.
 const MODELS = {
   arome: {label:"AROME", api:"meteofrance_seamless", long:"AROME (Météo-France)"},
-  auto:  {label:"Automàtic", api:null, long:"Automàtic (millor combinació)"},
+  auto:  {label:"Combinat", api:null, long:"Combinat d'Open-Meteo (barreja els models que funcionen millor a cada zona i termini)"},
   ecmwf: {label:"ECMWF", api:"ecmwf_ifs025", long:"ECMWF (centre europeu)"}
 };
-let model = store.get("mm_model"); if(!MODELS[model]) model = "arome";
+// Preferència: «best» = el model que més encerta avui respecte l'estació (per defecte), o un model fix triat per l'usuari
+let modelPref = store.get("mm_model_pref") || "best"; if(modelPref !== "best" && !MODELS[modelPref]) modelPref = "best";
+let model = "auto";
+function pickModel(){
+  if(modelPref !== "best") return modelPref;
+  const errs = modelErrors().filter(e => e.n >= 3);
+  if(!errs.length) return store.get("mm_model_best") || "auto";   // encara no hi ha prou hores mesurades: el millor de l'últim cop
+  const best = errs.sort((a, b) => a.mae - b.mae)[0].k; store.set("mm_model_best", best); return best;
+}
 const URL_ALT = `https://api.open-meteo.com/v1/forecast?latitude=${LOC.lat}&longitude=${LOC.lon}`+
   "&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&models=meteofrance_seamless,ecmwf_ifs025"+
   "&wind_speed_unit=kn&timezone=Europe%2FMadrid&forecast_days=7";
@@ -171,6 +179,7 @@ function parseAlt(j){
 // Construeix DATA.hours a partir de la base (automàtic) i del model triat
 function applyModel(){
   if(!DATA || !DATA.base) return;
+  model = pickModel();
   const alt = MODELS[model].api && DATA.alt ? DATA.alt[MODELS[model].api] : null;
   const hours = {}; let lastAlt = null;
   for(const t in DATA.base){ const b = DATA.base[t], a = alt && alt[t];
@@ -285,7 +294,7 @@ async function loadObs(){
     const hours = {};
     for(const k in by){ const L = by[k], ws = L.map(o=>o.wind).filter(v=>v!=null), gs = L.map(o=>o.gust).filter(v=>v!=null), ts = L.map(o=>o.temp).filter(v=>v!=null);
       hours[k] = {wind: ws.length ? ws.reduce((a,b)=>a+b,0)/ws.length : null, gust: gs.length ? Math.max(...gs) : null, dir: vecDir(L), temp: ts.length ? ts.reduce((a,b)=>a+b,0)/ts.length : null, n: L.length}; }
-    if(key === stKey){ OBS = {key, at: Date.now(), hours}; if(DATA){ renderNow(); renderHours(); renderWeek(); } }
+    if(key === stKey){ OBS = {key, at: Date.now(), hours}; if(DATA){ applyModel(); renderNow(); renderHours(); renderWeek(); if(window.renderWindMap) renderWindMap(); } }
   }catch(e){}
 }
 // Hora combinada: mesura real de l'estació per a les hores passades i l'actual; previsió per a la resta
@@ -596,13 +605,13 @@ function renderHours(){
   if(window.renderWindMap) setTimeout(renderWindMap, 0);
   const td = todayDate(); const start = Math.max(7, Math.min(21, +nowKey().slice(11,13) - 3));
   const errs = modelErrors(), bestE = errs.length ? Math.min(...errs.map(e => e.mae)) : null;
-  const errLine = errs.length ? `<div class="model-err"><span class="lbl">Error mitjà d'avui respecte l'estació ${esc(STATIONS[stKey].name)}</span>
-      <div class="model-err-row">${errs.map(e => `<span class="${e.mae === bestE ? "best" : ""}${e.k === model ? " cur" : ""}">${esc(MODELS[e.k].label)} <b>${r1(e.mae)} kn</b></span>`).join("")}</div></div>` : "";
-  const end = DATA.modelEnd && model !== "auto" ? (() => { const d = new Date(DATA.modelEnd); return ` Previsió ${MODELS[model].label} fins ${DAYS_L[d.getDay()].toLowerCase()} a les ${pad(d.getHours())} h; després, automàtica.`; })() : "";
+  const opt = (v, t) => `<option value="${v}"${modelPref === v ? " selected" : ""}>${t}</option>`;
+  const modelLine = `<div class="model-err"><label class="model-pick"><span class="lbl">Model de previsió</span>
+      <select id="modelSel">${opt("best", "El que més encerta avui" + (modelPref === "best" ? ` (${MODELS[model].label})` : ""))}${opt("arome","AROME")}${opt("auto","Combinat")}${opt("ecmwf","ECMWF")}</select></label>
+      ${errs.length ? `<div class="model-err-row"><span class="lbl">Error d'avui</span>${errs.map(e => `<span class="${e.mae === bestE ? "best" : ""}${e.k === model ? " cur" : ""}">${esc(MODELS[e.k].label)} <b>${r1(e.mae)} kn</b></span>`).join("")}</div>` : `<p class="note">Encara no hi ha prou hores mesurades avui per comparar els models.</p>`}</div>`;
   const wf = DATA.wf, lb = lastBuoy();
-  const waveLine = lb ? `<div class="model-err"><span class="lbl">Onada · ${esc(BUOY.name)} (Ports de l'Estat, a 20 km)</span>
-      <p class="note">Les hores passades mostren l'onada mesurada a la boia. ${wf && Math.abs(wf.f-1) > 0.05 ? `Les darreres ${wf.n} hores la previsió per al Masnou ha donat ${r1(wf.model)} m de mitjana i la boia n'ha mesurat ${r1(wf.buoy)}: la previsió de les properes hores es corregeix ×${r1(wf.f)} (la correcció s'esvaeix en 2 dies).` : "La previsió coincideix prou amb la boia."} «Màx.» és l'onada més alta esperable en una hora (unes ${String(HMAX_K).replace(".",",")} vegades l'altura significant).</p></div>` : "";
-  $("hoursBody").innerHTML = `${errLine}${waveLine}${end ? `<p class="note">${esc(end.trim())}</p>` : ""}<p class="note">Toca una fila per veure-la al gràfic i al mapa.</p>${hourTable(td, start, 21)}`;
+  const waveLine = lb ? `<p class="note wave-note">${wf && Math.abs(wf.f-1) > 0.05 ? `Onada: previsió ajustada ×${r1(wf.f)} per la desviació respecte a les mesures de la ${esc(BUOY.name)}.` : `Onada: la previsió coincideix amb les mesures de la ${esc(BUOY.name)}.`} Hores passades: mesura de la boia.</p>` : "";
+  $("hoursBody").innerHTML = `${modelLine}${waveLine}${hourTable(td, start, 21)}`;
   applySel();
   const best = SLOTS.map(sl => ({sl, a:slotAgg(td, sl, crit[act])})).filter(x=>x.a && !x.a.past).sort((a,b)=>b.a.score-a.a.score)[0];
   $("peekHours").textContent = best ? "Millor: "+best.sl.label.toLowerCase()+" · "+verdict(best.a).t.toLowerCase() : "";
@@ -624,7 +633,8 @@ function renderWeek(){
       <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>`;
     if(open) html += `<div class="wdetail"><div class="hc-read"></div><div class="chart">${hourChart(date, 7, 21, true, chartW($("week")) - 8)}</div>${chartLegend(true)}</div>`;
   });
-  $("week").innerHTML = html;
+  const end = DATA.modelEnd && model !== "auto" ? (() => { const d = new Date(DATA.modelEnd); return `Previsió ${MODELS[model].label} fins ${DAYS_L[d.getDay()].toLowerCase()} a les ${pad(d.getHours())} h; després, model combinat.`; })() : "";
+  $("week").innerHTML = (end ? `<p class="note" style="margin-bottom:6px">${esc(end)}</p>` : "") + html;
   applySel();
   $("peekWeek").textContent = good ? good+" franges bones o ideals" : "Cap franja bona";
 }
@@ -668,10 +678,8 @@ function renderViewPanel(){
 $("themeBtn").addEventListener("click", () => { const p = $("viewPanel"); p.hidden = !p.hidden; $("themeBtn").setAttribute("aria-expanded", String(!p.hidden)); renderViewPanel(); });
 $("themeSeg").addEventListener("click", e => { const b = e.target.closest("button[data-theme]"); if(!b) return; theme = b.dataset.theme; store.set("mm_theme", theme); applyTheme(); renderViewPanel(); });
 $("sizeSeg").addEventListener("click", e => { const b = e.target.closest("button[data-size]"); if(!b) return; textSize = b.dataset.size; store.set("mm_size", textSize); applySize(); renderViewPanel(); });
-$("modelSeg").addEventListener("click", e => { const b = e.target.closest("button[data-model]"); if(!b) return; model = b.dataset.model; store.set("mm_model", model);
-  document.querySelectorAll("#modelSeg button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.model === model)));
-  if(DATA){ applyModel(); renderNow(); renderHours(); renderWeek(); } });
-document.querySelectorAll("#modelSeg button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.model === model)));
+document.addEventListener("change", e => { if(e.target.id !== "modelSel") return; modelPref = e.target.value; store.set("mm_model_pref", modelPref);
+  if(DATA){ applyModel(); renderNow(); renderHours(); renderWeek(); if(window.renderWindMap) renderWindMap(); } });
 $("closeView").addEventListener("click", () => { $("viewPanel").hidden = true; $("themeBtn").setAttribute("aria-expanded","false"); });
 applySize();
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", applyTheme);

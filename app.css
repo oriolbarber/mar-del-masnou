@@ -465,3 +465,7 @@ tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--sel)}
 .tbl th:first-child,.tbl td:first-child{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:1px 0 0 var(--line)}
 .tbl tr.now-row td:first-child{background:var(--surface-2)}
 .tbl tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--sel),1px 0 0 var(--line)}
+.model-pick{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.model-pick select{font:600 .95rem var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:40px;max-width:100%}
+.model-err-row .lbl{flex-basis:100%}
+.wave-note{margin:0}
