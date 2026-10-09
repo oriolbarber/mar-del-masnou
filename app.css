@@ -340,3 +340,13 @@ button.src{border:1px solid var(--line);background:var(--surface-2);border-radiu
 td small.obs{display:block;font-family:var(--f-body);font-size:.68rem;font-weight:700;color:var(--accent-2);text-transform:uppercase;letter-spacing:.05em}
 
 .frame.cam{height:auto;aspect-ratio:16/9;max-width:100%}
+
+/* informació oficial: avisos Meteocat i bandera de bany */
+.info{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.info-row{display:flex;gap:10px;align-items:flex-start;border-radius:12px;padding:8px 12px;background:var(--kt);border:1px solid var(--k);color:var(--ink);font-size:.86rem;line-height:1.35}
+.info-row svg{color:var(--k);flex:none;margin-top:1px}
+.info-row b{font-weight:700}
+.info-quiet{font-size:.78rem;color:var(--muted);font-weight:600}
+:root[data-size="big"] .info-row{font-size:1.1rem;padding:12px 14px}
+:root[data-size="big"] .info-row svg{width:28px;height:28px}
+:root[data-size="big"] .info-quiet{font-size:1rem}

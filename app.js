@@ -322,6 +322,71 @@ function hourTable(date, h0, h1){
   return `<div class="tbl"><table><thead><tr><th class="l">Hora</th><th class="l">Estat</th><th class="l">Dir.</th><th>Vent</th><th>Ratxa</th><th>Onada</th><th>Per. s</th><th>Aire</th><th>Aigua</th><th>Pluja</th><th class="l">Avisos</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
+/* ---------- informació oficial: bandera de bany (Gencat) i avisos (Meteocat) ---------- */
+// Bandera: dades obertes «Estat de les platges de Catalunya» (Platja d'Ocata = 081189-p1, Platja del Masnou = 081189-p0).
+// Avisos: Situacions Meteorològiques de Perill (SMP) de Meteocat per al Maresme (21) i la seva zona de mar (96).
+const BEACHES = {"081189-p1":"Platja d'Ocata", "081189-p0":"Platja del Masnou"};
+const SMP_ZONES = [21, 96];
+let INFO = {flag:null, alerts:[], at:0, ok:{flag:false, smp:false}};
+const ymd = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+async function loadFlag(){
+  const where = encodeURIComponent("codiplatja='081189-p1' OR codiplatja='081189-p0'");
+  const r = await fetch(`https://analisi.transparenciacatalunya.cat/resource/4baz-cjv2.json?$where=${where}&$select=codiplatja,estat_data,estat_bandera,estat_motiubandera,estat_estatmar,estat_meduses&$order=:id DESC&$limit=4`, {cache:"no-store"});
+  if(!r.ok) throw 0;
+  const rows = await r.json();
+  const row = rows.find(x => x.codiplatja === "081189-p1") || rows[0]; if(!row) return null;
+  const m = (row.estat_data || "").match(/(\d\d)\/(\d\d)\/(\d{4})T(\d\d):(\d\d)/);
+  const at = m ? Date.UTC(+m[3], +m[2]-1, +m[1], +m[4], +m[5]) : null;
+  const med = (row.estat_meduses || "").split(";").filter(x => x && x !== "N/A").map(x => x.split(",")[0]);
+  return {beach: BEACHES[row.codiplatja] || "", color: (row.estat_bandera || "").toLowerCase(), reason: row.estat_motiubandera && row.estat_motiubandera !== "N/A" ? row.estat_motiubandera : "", sea: row.estat_estatmar && row.estat_estatmar !== "N/A" ? row.estat_estatmar : "", jelly: med, at};
+}
+async function loadSmp(){
+  const out = new Map(), now = new Date(), todayK = ymd(now), hourNow = now.getHours();
+  for(const d of [now, new Date(now.getTime() + 864e5)]){
+    let list;
+    try{ const r = await fetch(`https://static-m.meteo.cat/ginys/pronostic/smp/episodisOberts/avisos-episodis-oberts-${ymd(d)}.json`, {cache:"no-store"}); if(r.status === 404) continue; if(!r.ok) throw 0; list = await r.json(); }
+    catch(e){ if(d === now) throw e; continue; }
+    (list || []).forEach(ep => (ep.avisos || []).forEach(av => (av.evolucions || []).forEach(ev => (ev.periodes || []).forEach(pe => (pe.afectacions || []).forEach(af => {
+      if(!SMP_ZONES.includes(af.idComarca)) return;
+      const day = (ev.dia || "").slice(0,10).replace(/-/g,""); if(day < todayK) return;
+      const h1 = Number((pe.nom || "00-00").split("-")[1]) || 24;
+      if(day === todayK && h1 <= hourNow) return;              // franja ja passada
+      const key = `${ep.meteor?.nom}|${day}`, cur = out.get(key) || {meteor: ep.meteor?.nom || "Avís", tipus: av.tipus, day, llindar: af.llindar || ev.llindar1, perill: 0, periods: new Set(), zones: new Set()};
+      cur.perill = Math.max(cur.perill, af.perill || 0); cur.periods.add(pe.nom); cur.zones.add(af.idComarca === 96 ? "mar" : "terra");
+      if(av.tipus === "Avís") cur.tipus = "Avís";
+      out.set(key, cur);
+    })))));
+  }
+  return [...out.values()].sort((a,b) => a.day.localeCompare(b.day) || b.perill - a.perill)
+    .map(a => Object.assign(a, {periods:[...a.periods].sort(), zones:[...a.zones]}));
+}
+async function loadInfo(){
+  const [f, s] = await Promise.allSettled([loadFlag(), loadSmp()]);
+  INFO = {flag: f.status === "fulfilled" ? f.value : null, alerts: s.status === "fulfilled" ? s.value : [], at: Date.now(), ok:{flag: f.status === "fulfilled", smp: s.status === "fulfilled"}};
+  renderInfo();
+}
+const FLAG = {verda:{k:"ideal", t:"verda"}, groga:{k:"marg", t:"groga"}, vermella:{k:"no", t:"vermella"}};
+const PERILL = p => p >= 5 ? {k:"no", t:"perill molt alt"} : p >= 3 ? {k:"no", t:"perill alt"} : {k:"marg", t:"perill moderat"};
+function renderInfo(){
+  const el = $("info"); if(!el) return;
+  const parts = [], today = ymd(new Date()), tomorrow = ymd(new Date(Date.now() + 864e5));
+  INFO.alerts.forEach(a => { const pv = PERILL(a.perill), when = a.day === today ? "avui" : a.day === tomorrow ? "demà" : a.day.slice(6)+"/"+a.day.slice(4,6);
+    const hrs = a.periods.length === 4 ? "tot el dia" : a.periods.map(p => p.replace("-", "–")+" h").join(", ");
+    parts.push(`<div class="info-row k-${pv.k}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/></svg>
+      <span><b>${esc(a.tipus)} Meteocat · ${esc(a.meteor)}</b><br>${esc(a.llindar || "")} · ${when} ${esc(hrs)} · ${pv.t}${a.zones.includes("mar") ? " · zona de mar del Maresme" : " · Maresme"}</span></div>`); });
+  const f = INFO.flag, fresh = !!(f && f.at && new Date(f.at).toDateString() === new Date().toDateString()), fl = f && FLAG[f.color];
+  if(fresh && fl){
+    const extra = [f.reason, f.sea ? "mar "+f.sea : "", f.jelly.length ? "meduses: "+f.jelly.join(", ") : ""].filter(Boolean).join(" · ");
+    parts.push(`<div class="info-row k-${fl.k}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M6 4h12l-3 4 3 4H6z" fill="currentColor"/></svg>
+      <span><b>Bandera ${fl.t} · ${esc(f.beach)}</b> · ${new Date(f.at).toTimeString().slice(0,5)}${extra ? `<br>${esc(extra)}` : ""}</span></div>`);
+  }
+  const quiet = [];
+  if(INFO.ok.smp && !INFO.alerts.length) quiet.push("Sense avisos de Meteocat al Maresme");
+  if(!INFO.ok.smp) quiet.push("Avisos de Meteocat no disponibles ara");
+  if(!fresh) quiet.push(INFO.ok.flag ? "Bandera de bany: sense dades avui" + (f && fl ? ` (darrera: ${fl.t}, ${new Date(f.at).toLocaleDateString("ca",{day:"numeric",month:"short"})})` : "") : "Bandera de bany no disponible ara");
+  el.innerHTML = parts.join("") + (quiet.length ? `<div class="info-quiet">${quiet.map(esc).join(" · ")}</div>` : "");
+}
+
 /* ---------- render ---------- */
 // Siluetes de les embarcacions: patí (casc doble, una vela), windsurf (taula i vela amb wishbone), Hobie Cat (catamarà amb major i floc)
 const BOAT_IC = {
@@ -467,14 +532,15 @@ tick(); setInterval(tick, 20000);
 /* ---------- events ---------- */
 $("actSeg").addEventListener("click", e => { const b = e.target.closest("button[data-act]"); if(!b) return; act = b.dataset.act; store.set("mm_act", act); render(); });
 $("week").addEventListener("click", e => { const b = e.target.closest(".wrow"); if(!b) return; openDay = openDay === b.dataset.day ? null : b.dataset.day; renderWeek(); });
-$("refresh").addEventListener("click", () => { load(); loadStation(); loadObs(); });
+$("refresh").addEventListener("click", () => { load(); loadStation(); loadObs(); loadInfo(); });
 $("src").addEventListener("click", () => { stKey = stKey === "ocata" ? "masnou" : "ocata"; store.set("mm_station_v2", stKey); ST = null; renderNow(); loadStation(); loadObs(); });
 $("crit").addEventListener("change", e => { const k = e.target.dataset.k; if(!k) return; const v = parseFloat(e.target.value); if(isNaN(v)) return;
   crit[act][k] = v; store.set("mm_crit", crit); renderCrit(); if(DATA){ renderNow(); renderHours(); renderWeek(); } });
 $("resetCrit").addEventListener("click", () => { crit[act] = JSON.parse(JSON.stringify(DEFAULTS[act])); store.set("mm_crit", crit); render(); });
 
 renderSeg(); renderCrit();
-load(); loadStation(); loadObs();
+load(); loadStation(); loadObs(); loadInfo();
+setInterval(() => { if(document.visibilityState === "visible") loadInfo(); }, 15*60*1000);
 setInterval(load, 30*60*1000);
 setInterval(() => { if(document.visibilityState === "visible") loadObs(); }, 10*60*1000);
 setInterval(() => { if(document.visibilityState === "visible") loadStation(); }, 60*1000);
