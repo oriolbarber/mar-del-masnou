@@ -332,3 +332,7 @@ button.src{border:1px solid var(--line);background:var(--surface-2);border-radiu
 :root[data-size="big"] .eco-l{font-size:1.15rem}
 :root[data-size="big"] .msg{font-size:1.05rem}
 :root[data-size="big"] footer{font-size:.95rem}
+
+/* resum dels criteris en dues línies: vent a dalt, onades a sota */
+#peekCrit{display:flex;flex-direction:column;gap:1px;min-width:0}
+#peekCrit .pk-l{white-space:nowrap}

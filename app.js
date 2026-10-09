@@ -358,7 +358,7 @@ function renderWeek(){
 function renderCrit(){
   const c = crit[act];
   $("critIntro").textContent = "Llindars per a "+DEFAULTS[act].name+". Ajusta'ls al teu nivell; es desen en aquest dispositiu.";
-  $("peekCrit").textContent = DEFAULTS[act].short+" · ideal "+c.iMin+"–"+c.iMax+" kn · onada < "+r1(c.wMax)+" m";
+  $("peekCrit").innerHTML = `<span class="pk-l">${esc(DEFAULTS[act].short)} · vent ideal ${c.iMin}–${c.iMax}&nbsp;kn</span><span class="pk-l">Onada màxima ${r1(c.wMax)}&nbsp;m</span>`;
   const F = [["min","Vent mínim (kn)",1],["iMin","Ideal des de (kn)",1],["iMax","Ideal fins a (kn)",1],["max","Vent màxim (kn)",1],["gust","Ratxa màxima (kn)",1],["wOk","Onada còmoda (m)",0.1],["wMax","Onada màxima (m)",0.1]];
   $("crit").innerHTML = F.map(([k,l,st]) => `<label for="c_${k}">${l}<input id="c_${k}" type="number" inputmode="decimal" step="${st}" min="0" value="${c[k]}" data-k="${k}"></label>`).join("");
 }
