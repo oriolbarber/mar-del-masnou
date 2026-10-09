@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=31">
+<link rel="stylesheet" href="app.css?v=32">
 </head>
 <body>
 <div class="app">
@@ -31,19 +31,41 @@
   <img src="icons/logo.svg?v=3" alt="Club Ocata Vent" width="36" height="36">
   <div class="t"><b>Ocata Vent</b><span id="clock">El Masnou</span></div>
   <div class="seg act-seg" role="group" aria-label="Embarcació" id="actSeg"></div>
-  <button class="ib" id="themeBtn" type="button" aria-label="Opcions de visualització" aria-expanded="false" aria-controls="viewPanel"></button>
+  <button class="ib" id="themeBtn" type="button" aria-label="Configuració" aria-expanded="false" aria-controls="viewPanel"></button>
   <button class="ib" id="refresh" type="button" aria-label="Actualitza les dades">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
   </button>
 </header>
 <div class="card view-panel" id="viewPanel" hidden>
-  <div class="vp-row"><span class="lbl">Tema</span>
-    <div class="seg" role="group" aria-label="Tema" id="themeSeg">
-      <button type="button" data-theme="auto">Automàtic</button><button type="button" data-theme="dark">Fosc</button><button type="button" data-theme="light">Clar</button></div></div>
-  <div class="vp-row"><span class="lbl">Mida del text</span>
-    <div class="seg" role="group" aria-label="Mida del text" id="sizeSeg">
-      <button type="button" data-size="normal">Normal</button><button type="button" data-size="big"><span style="font-size:1.25em">A</span>&nbsp;Gran</button></div></div>
-  <p class="note">«Gran» fa les lletres i els números molt més grans i treu els indicadors gràfics de la primera pantalla.</p>
+  <section class="vp-sec">
+    <div class="vp-h"><h3>Visualització</h3><button class="ib-i" type="button" data-info="iVis" aria-label="Més informació sobre la visualització" aria-expanded="false">i</button></div>
+    <p class="vp-info" id="iVis" hidden>«Automàtic» segueix el tema del mòbil. «Gran» fa les lletres i els números molt més grans i treu alguns indicadors gràfics de la primera pantalla per guanyar espai.</p>
+    <div class="vp-row"><span class="lbl">Tema</span>
+      <div class="seg" role="group" aria-label="Tema" id="themeSeg">
+        <button type="button" data-theme="auto">Automàtic</button><button type="button" data-theme="dark">Fosc</button><button type="button" data-theme="light">Clar</button></div></div>
+    <div class="vp-row"><span class="lbl">Mida del text</span>
+      <div class="seg" role="group" aria-label="Mida del text" id="sizeSeg">
+        <button type="button" data-size="normal">Normal</button><button type="button" data-size="big"><span style="font-size:1.25em">A</span>&nbsp;Gran</button></div></div>
+  </section>
+  <section class="vp-sec">
+    <div class="vp-h"><h3>Model de previsió</h3><button class="ib-i" type="button" data-info="iModel" aria-label="Més informació sobre els models" aria-expanded="false">i</button></div>
+    <div class="vp-info" id="iModel" hidden>
+      <p><b>AROME</b>: model de Météo-France d'alta resolució (≈1,3 km), molt detallat a la costa; arriba a uns 2–4 dies.</p>
+      <p><b>ECMWF</b>: model del centre europeu, global (≈9–25 km); el més fiable a mitjà termini.</p>
+      <p><b>Combinat</b>: la barreja que fa Open-Meteo amb els models que funcionen millor a cada zona i termini.</p>
+      <p><b>El que més encerta avui</b>: compara cada hora ja passada d'avui amb el vent mesurat a l'estació i tria el model amb menys error. L'<b>error</b> és la diferència mitjana de vent, en nusos (com més baix, millor). Calen com a mínim 3 hores mesurades; abans, s'usa el guanyador de l'últim cop.</p>
+    </div>
+    <div id="modelBox"></div>
+  </section>
+  <section class="vp-sec">
+    <div class="vp-h"><h3>Criteris · <span id="critBoat"></span></h3><button class="ib-i" type="button" data-info="iCrit" aria-label="Més informació sobre els criteris" aria-expanded="false">i</button></div>
+    <div class="vp-info" id="iCrit" hidden>
+      <p>Llindars per a l'embarcació triada a dalt; es desen en aquest dispositiu. Defineixen el codi de colors: <b>verd</b> dins la franja ideal, <b>taronja</b> entre el mínim i l'ideal o entre l'ideal i el màxim, <b>vermell</b> fora dels límits.</p>
+      <p>Cada franja es puntua amb el vent mitjà, la ratxa màxima i l'onada. Si l'únic problema és que no bufa prou, surt <b>Poc vent</b>; <b>No apte</b> queda per a massa vent o ratxes, massa onades, pluja o tempesta. Es penalitza el <b>terral</b> (mestral, tramuntana o ponent), les ratxes molt més fortes que el vent mitjà, la <b>mar de fons</b> (període de 7 s o més), la pluja probable i les tempestes.</p>
+    </div>
+    <div class="crit" id="crit"></div>
+    <div><button class="btn" type="button" id="resetCrit">Restaura valors</button></div>
+  </section>
   <button class="btn" type="button" id="closeView">Fet</button>
 </div>
 
@@ -94,16 +116,6 @@
     <div class="sec-body"><div class="wk" id="week"></div></div>
   </details>
 
-  <details class="card sec" id="secCrit">
-    <summary><h2>Criteris</h2><span class="peek" id="peekCrit"></span>
-      <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
-    <div class="sec-body">
-      <p class="note" id="critIntro"></p>
-      <div class="crit" id="crit"></div>
-      <div><button class="btn" type="button" id="resetCrit">Restaura valors</button></div>
-      <p class="note">Cada franja es puntua amb el vent mitjà, la ratxa màxima i l'onada màxima. Si l'únic problema és que no bufa prou, surt <b>Poc vent</b>; <b>No apte</b> queda per a massa vent o ratxes, massa onades, pluja o tempesta. Es penalitza el <b>terral</b> (mestral, tramuntana o ponent: bufa de terra cap a mar i allunya l'embarcació de la platja), les ratxes molt més fortes que el vent mitjà, la pluja probable i les tempestes. A la rosa dels vents, el sector vermell és terral i el verd, vent de mar.</p>
-    </div>
-  </details>
 
   <footer>
     <div>Previsió: Open-Meteo (AROME/ECMWF; onatge MFWAM/ECMWF). Vent mesurat: estació Ocata Vent (o la d'El Masnou). Vent en nusos, onades en metres.</div>
@@ -241,9 +253,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=31"></script>
-<script src="trip.js?v=31"></script>
-<script src="maps.js?v=31"></script>
-<script src="windmap.js?v=31"></script>
+<script src="app.js?v=32"></script>
+<script src="trip.js?v=32"></script>
+<script src="maps.js?v=32"></script>
+<script src="windmap.js?v=32"></script>
 </body>
 </html>
