@@ -163,21 +163,36 @@ async function loadStation(){
 // Mateixa consulta que la «Taula interactiva» de la web: Avui, per hores, vent mitjà, ratxa màx., direcció i temperatura
 let OBS = {key:null, at:0, hours:{}};
 const UNIT_KN = {kmh:0.539957, "km/h":0.539957, ms:1.943844, "m/s":1.943844, mph:0.868976, kt:1, kn:1, kts:1};
+const OBS_PARAMS = "avgbracketLWbracketR,maxbracketLGbracketR,avgbracketLBbracketR,avgbracketLTbracketR";
+const fmtLocal = ms => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+// Registres de 5 minuts de l'estació (consulta «Taula interactiva», agrupació «Tot»), en nusos
+async function stationRecords(key, interval, fromMs, toMs){
+  const base = new URL(STATIONS[key].url).origin;
+  const q = `value=all&interval=${interval}&from=${fromMs ? encodeURIComponent(fmtLocal(fromMs)) : ""}&to=${toMs ? encodeURIComponent(fmtLocal(toMs)) : ""}&parameters=${OBS_PARAMS}`;
+  const r = await fetch(base+"/pages/station/tableAjax.php?"+q+"&t="+Date.now(), {cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status);
+  const doc = new DOMParser().parseFromString(await r.text(), "text/html");
+  const unitTxt = (doc.querySelector("thead th:nth-child(2)")?.textContent || "").toLowerCase();
+  const f = UNIT_KN[((unitTxt.match(/\(([^)]+)\)/) || [])[1] || "").replace(/\s/g,"")] ?? KMH;
+  const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+  const out = [];
+  doc.querySelectorAll("tbody tr").forEach(tr => {
+    const td = [...tr.children].map(x => x.textContent.trim()); const m = td[0]?.match(/(\d\d)\/(\d\d)\/(\d\d)\s+(\d\d):(\d\d)/); if(!m) return;
+    const w = num(td[1]), g = num(td[2]);
+    out.push({t: new Date(2000+ +m[3], +m[2]-1, +m[1], +m[4], +m[5]).getTime(), wind: w==null?null:w*f, gust: g==null?null:g*f, dir: num(td[3]), temp: num(td[4])});
+  });
+  return out.sort((a,b) => a.t - b.t);
+}
+// Direcció mitjana vectorial (ponderada pel vent): 350° i 10° fan 0°, no 180°
+function vecDir(list){ let x = 0, y = 0; list.forEach(o => { if(o.dir!=null){ const w = Math.max(o.wind||0, 0.1); x += Math.sin(o.dir*Math.PI/180)*w; y += Math.cos(o.dir*Math.PI/180)*w; } }); return (x||y) ? norm(Math.atan2(x,y)*180/Math.PI) : null; }
 async function loadObs(){
-  const key = stKey, base = new URL(STATIONS[key].url).origin;
-  const q = "value=h&interval=today&from=&to=&parameters=avgbracketLWbracketR,maxbracketLGbracketR,avgbracketLBbracketR,avgbracketLTbracketR";
+  const key = stKey;
   try{
-    const r = await fetch(base+"/pages/station/tableAjax.php?"+q+"&t="+Date.now(), {cache:"no-store"}); if(!r.ok) throw 0;
-    const doc = new DOMParser().parseFromString(await r.text(), "text/html");
-    const unitTxt = (doc.querySelector("thead th:nth-child(2)")?.textContent || "").toLowerCase();
-    const f = UNIT_KN[(unitTxt.match(/\(([^)]+)\)/) || [])[1]?.replace(/\s/g,"")] ?? KMH;
+    const recs = await stationRecords(key, "today");
+    const by = {};
+    recs.forEach(o => { const d = new Date(o.t), k = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`; (by[k] = by[k] || []).push(o); });
     const hours = {};
-    doc.querySelectorAll("tbody tr").forEach(tr => {
-      const td = [...tr.children].map(x => x.textContent.trim()); const m = td[0]?.match(/(\d\d)\/(\d\d)\/(\d\d)\s+(\d\d):/); if(!m) return;
-      const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
-      const w = num(td[1]), g = num(td[2]);
-      hours[`20${m[3]}-${m[2]}-${m[1]}T${m[4]}:00`] = {wind: w==null?null:w*f, gust: g==null?null:g*f, dir: num(td[3]), temp: num(td[4])};
-    });
+    for(const k in by){ const L = by[k], ws = L.map(o=>o.wind).filter(v=>v!=null), gs = L.map(o=>o.gust).filter(v=>v!=null), ts = L.map(o=>o.temp).filter(v=>v!=null);
+      hours[k] = {wind: ws.length ? ws.reduce((a,b)=>a+b,0)/ws.length : null, gust: gs.length ? Math.max(...gs) : null, dir: vecDir(L), temp: ts.length ? ts.reduce((a,b)=>a+b,0)/ts.length : null, n: L.length}; }
     if(key === stKey){ OBS = {key, at: Date.now(), hours}; if(DATA){ renderNow(); renderHours(); renderWeek(); } }
   }catch(e){}
 }

@@ -143,7 +143,7 @@ function setRecUI(){
 function startTrip(){
   $("tripErr").hidden = true;
   const eco = $("ecoMode").checked; store.set("mm_eco", eco);
-  LIVE = {id: Date.now(), name: $("tripName").value.trim(), act, start: Date.now(), pts: [], wind: [], eco};
+  LIVE = {id: Date.now(), name: $("tripName").value.trim(), act, start: Date.now(), pts: [], wind: [], eco, station: stKey};
   if(!startWatch()){ LIVE = null; return; }
   saveLive(); setRecUI(); renderLive();
 }
@@ -153,7 +153,7 @@ async function stopTrip(){
   if(Date.now() - confirmStop > 4000){ confirmStop = Date.now(); $("stopTrip").textContent = "Toca de nou per desar"; setTimeout(() => $("stopTrip").textContent = "Atura i desa", 4000); return; }
   stopWatch();
   const trip = Object.assign({}, LIVE, {end: Date.now()});
-  if(trip.wind.length < 2) await fillModelWind(trip);
+  await fillStationWind(trip);
   trip.summary = summarize(trip);
   try{ await DB.put(trip); }catch(e){}
   LIVE = null; store.del("mm_live"); $("tripName").value = "";
@@ -195,7 +195,7 @@ function summarize(trip){
     avgKn: moving ? (dist/NM)/(moving/3600) : 0, maxKn, maxOffM: maxOff, points: trip.pts.length,
     wind: {avg: wv.length ? wv.reduce((a,b)=>a+b,0)/wv.length : null, min: wv.length?Math.min(...wv):null, max: wv.length?Math.max(...wv):null,
       gust: gv.length ? Math.max(...gv) : null, dir: (sx||sy) ? norm(Math.atan2(sx,sy)*180/Math.PI) : null, temp: tv.length ? tv.reduce((a,b)=>a+b,0)/tv.length : null,
-      src: W.some(w=>w.src==="estació") ? "estació "+(STATIONS[stKey]?.name||"") : "previsió del model", n: W.length},
+      src: W.some(w=>w.src==="estació") ? "estació "+(STATIONS[trip.station || stKey]?.name||"") : "previsió del model", n: W.length},
     pos
   };
 }
@@ -283,6 +283,15 @@ function renderEco(sog, s, w, cog){
 }
 
 /* ---------- vent del model per a sortides sense estació (o importades) ---------- */
+// Vent real de l'estació (registres de 5 minuts) per a tota la durada de la sortida; si no n'hi ha, el del model
+async function fillStationWind(trip){
+  const key = trip.station || stKey; trip.station = key;
+  try{
+    const recs = (await stationRecords(key, "custom", trip.start - 10*60e3, (trip.end || Date.now()) + 10*60e3)).filter(o => o.wind != null);
+    if(recs.length >= 2){ trip.wind = recs.map(o => Object.assign(o, {src:"estació"})); return; }
+  }catch(e){}
+  if(trip.wind.length < 2) await fillModelWind(trip);
+}
 async function fillModelWind(trip){
   try{
     const ymd = ms => { const d = new Date(ms); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); };
@@ -311,8 +320,8 @@ async function importGpx(file){
     }
     if(pts.length < 2){ msg("Aquest fitxer no té una ruta amb hores. Cal un GPX gravat (track), no una ruta planificada."); return; }
     const nm = xml.getElementsByTagName("name")[0]?.textContent?.trim();
-    const trip = {id: Date.now(), name: nm || file.name.replace(/\.gpx$/i,""), act, start: pts[0].t, end: pts[pts.length-1].t, pts, wind: [], imported: true};
-    await fillModelWind(trip);
+    const trip = {id: Date.now(), name: nm || file.name.replace(/\.gpx$/i,""), act, start: pts[0].t, end: pts[pts.length-1].t, pts, wind: [], imported: true, station: stKey};
+    await fillStationWind(trip);
     trip.summary = summarize(trip);
     await DB.put(trip); msg(""); showTrip(trip.id);
   }catch(e){ msg("No s'ha pogut llegir el fitxer GPX."); }
@@ -326,7 +335,7 @@ async function renderList(){
   let trips = []; try{ trips = (await DB.all()) || []; }catch(e){}
   trips.sort((a,b) => b.start - a.start);
   const imp = `<article class="card"><div class="import-row"><label class="btn" for="gpxIn" style="display:inline-flex;align-items:center">Importa un GPX</label>
-    <span class="note">Ruta gravada amb una altra app o un rellotge (funcionen amb la pantalla apagada). S'hi afegeix el vent del model.</span></div>
+    <span class="note">Ruta gravada amb una altra app o un rellotge (funcionen amb la pantalla apagada). S'hi afegeix el vent real de l'estació d'aquell moment (o el del model si l'estació no en té).</span></div>
     <input type="file" id="gpxIn" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden><div class="msg" id="importMsg" hidden style="margin-top:8px"></div></article>`;
   if(!trips.length){ $("logList").innerHTML = `<article class="card empty">Encara no hi ha cap sortida desada.<br>Prem «Sortida» per gravar la primera.</article>` + imp; return; }
   $("logList").innerHTML = imp + `<div class="card-h" style="margin:0"><h2 style="font-size:1.3rem;text-transform:uppercase">Sortides</h2><span class="lbl">${trips.length}</span></div><div class="trips">` + trips.map(t => {
