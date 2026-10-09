@@ -400,7 +400,7 @@ function download(t, kind){
   let body, type;
   if(kind === "gpx"){
     type = "application/gpx+xml";
-    body = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Mar del Masnou" xmlns="http://www.topografix.com/GPX/1/1">\n<trk><name>${esc(t.name||base)}</name><trkseg>\n` +
+    body = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Ocata Vent" xmlns="http://www.topografix.com/GPX/1/1">\n<trk><name>${esc(t.name||base)}</name><trkseg>\n` +
       t.pts.map(p => `<trkpt lat="${p.lat}" lon="${p.lon}"><time>${new Date(p.t).toISOString()}</time></trkpt>`).join("\n") + `\n</trkseg></trk>\n</gpx>\n`;
   } else {
     type = "text/csv";

@@ -243,3 +243,25 @@ button.src{border:1px solid var(--line);background:var(--surface-2);border-radiu
 .eco-u{color:#6f86a8;font-weight:600;font-size:.9rem}
 .eco-exit{border:1px solid #1d2a3d;background:#000;color:#6f86a8;border-radius:14px;min-height:54px;font-family:var(--f-head);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.95rem;cursor:pointer}
 .import-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* selector d'embarcació amb icones, a la barra superior */
+.act-seg{padding:2px;border-radius:12px;gap:1px;flex:none}
+.act-seg button{width:40px;min-height:38px;padding:0;display:grid;place-items:center;border-radius:9px}
+.top{gap:8px}
+.top .t b,.top .t span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:400px){
+  .top img{width:32px;height:32px}
+  .top .t b{font-size:1.02rem}
+  .top .t span{font-size:.72rem}
+  .act-seg button{width:36px;min-height:36px}
+  .ib{width:38px;height:38px}
+}
+@media (max-width:350px){ .top .t{display:none} .act-seg{margin-left:auto} }
+@media (max-width:380px){
+  .top{gap:6px}
+  .top img{width:28px;height:28px}
+  .act-seg button{width:32px;min-height:34px}
+  .act-seg svg{width:19px;height:19px}
+  .ib{width:34px;height:34px;border-radius:10px}
+  .ib svg{width:17px;height:17px}
+}

@@ -262,7 +262,17 @@ function hourTable(date, h0, h1){
 }
 
 /* ---------- render ---------- */
-function renderSeg(){ $("actSeg").innerHTML = Object.keys(DEFAULTS).map(k => `<button type="button" data-act="${k}" aria-pressed="${k===act}">${esc(DEFAULTS[k].short)}</button>`).join(""); }
+// Siluetes de les embarcacions: patí (casc doble, una vela), windsurf (taula i vela amb wishbone), Hobie Cat (catamarà amb major i floc)
+const BOAT_IC = {
+  pati: `<path d="M12.5 2.5v14"/><path d="M12.5 3.5 19 15.5h-6.5"/><path d="M3 17.5h18l-1.6 2.5H4.8z"/><path d="M6 22h12"/>`,
+  windsurf: `<path d="M3 20.5c4 1.2 13 1.2 18-1.5"/><path d="M8.5 19.5 13 2.5"/><path d="M13 2.5c4.5 3 6.5 8 5.5 13L9.6 18"/><path d="M10.6 11.5l7.6 1.2"/>`,
+  hobie: `<path d="M12.5 2.5v14"/><path d="M12.5 3.5 18.5 15.5h-6"/><path d="M11.5 5.5 6.5 15.5h5"/><path d="M3 17.5h18l-1.6 2.5H4.8z"/><path d="M6 22h12"/>`
+};
+const boatIcon = (k, z) => `<svg width="${z||22}" height="${z||22}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${BOAT_IC[k]}</svg>`;
+function renderSeg(){
+  $("actSeg").innerHTML = Object.keys(DEFAULTS).map(k => `<button type="button" data-act="${k}" aria-pressed="${k===act}" aria-label="${esc(DEFAULTS[k].name)}" title="${esc(DEFAULTS[k].name)}">${boatIcon(k)}</button>`).join("");
+  const n = $("actName"); if(n) n.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;color:var(--ink)">${boatIcon(act,18)}${esc(DEFAULTS[act].name)}</span>`;
+}
 function stat(ic, label, v, unit, x){ return `<div class="stat"><div class="k"><span class="chip-ic">${icon(ic)}</span><span class="lbl">${label}</span></div><div class="v">${v}${unit?`<small>${unit}</small>`:""}</div><div class="x">${x||"&nbsp;"}</div></div>`; }
 function renderNow(){
   if(!DATA) return;
@@ -366,7 +376,8 @@ function go(v){
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if(b) go(b.dataset.go); });
 
-function tick(){ const d = new Date(); $("clock").textContent = DAYS_L[d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()]+" · "+pad(d.getHours())+":"+pad(d.getMinutes()); }
+const DAYS_S = ["dg.","dl.","dt.","dc.","dj.","dv.","ds."];
+function tick(){ const d = new Date(); $("clock").textContent = DAYS_S[d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()]+" · "+pad(d.getHours())+":"+pad(d.getMinutes()); }
 tick(); setInterval(tick, 20000);
 
 /* ---------- events ---------- */

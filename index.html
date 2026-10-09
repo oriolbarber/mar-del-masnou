@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Mar del Masnou</title>
+<title>Ocata Vent</title>
 <meta name="description" content="Idoneïtat per navegar al Masnou: vent, onades, temperatura de l'aigua i registre de sortides amb GPS.">
 <meta name="theme-color" content="#e9eef5" id="themeColor">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Mar Masnou">
+<meta name="apple-mobile-web-app-title" content="Ocata Vent">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -20,14 +20,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=9">
+<link rel="stylesheet" href="app.css?v=10">
 </head>
 <body>
 <div class="app">
 
 <header class="top">
   <img src="icons/icon-192.png" alt="Club Ocata Vent" width="36" height="36">
-  <div class="t"><b>Mar del Masnou</b><span id="clock">Club Ocata Vent</span></div>
+  <div class="t"><b>Ocata Vent</b><span id="clock">El Masnou</span></div>
+  <div class="seg act-seg" role="group" aria-label="Embarcació" id="actSeg"></div>
   <button class="ib" id="themeBtn" type="button" aria-label="Tema: automàtic"></button>
   <button class="ib" id="refresh" type="button" aria-label="Actualitza les dades">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
@@ -43,7 +44,7 @@
   <div class="hero" id="hero" hidden>
     <article class="card now">
       <div class="card-h">
-        <div class="seg" role="group" aria-label="Embarcació" id="actSeg"></div>
+        <span class="lbl" id="actName"></span>
         <button type="button" class="src" id="src"></button>
       </div>
       <div class="now-grid">
@@ -200,8 +201,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=9"></script>
-<script src="trip.js?v=9"></script>
-<script src="maps.js?v=9"></script>
+<script src="app.js?v=10"></script>
+<script src="trip.js?v=10"></script>
+<script src="maps.js?v=10"></script>
 </body>
 </html>
