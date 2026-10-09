@@ -96,6 +96,7 @@ function onPos(pos){
     if(p.cog == null && d > 4) p.cog = Math.round(bearing(last, p));
   }
   LIVE.pts.push(p);
+  if(last && (p.t - last.t)/1000 > GAP_S){ saveLive(); liveGapNote(); }
   if(LIVE.pts.length % 6 === 0) saveLive();
   renderLive();
 }
@@ -106,7 +107,21 @@ function onPosErr(err){
   if(err.code === 1 && LIVE && !LIVE.pts.length){ $("tripErr").textContent = msg; $("tripErr").hidden = false; }
 }
 async function keepAwake(){
-  try{ if("wakeLock" in navigator && document.visibilityState === "visible"){ wakeLock = await navigator.wakeLock.request("screen"); } }catch(e){}
+  try{ if("wakeLock" in navigator && document.visibilityState === "visible" && (!wakeLock || wakeLock.released)){
+    wakeLock = await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release", () => { if(LIVE && document.visibilityState === "visible") setTimeout(keepAwake, 500); });
+  } }catch(e){}
+}
+// Avís quan tornem a l'app després d'una estona amb la pantalla apagada o en una altra app
+let hiddenAt = 0;
+function liveGapNote(){
+  if(!LIVE) return;
+  const g = gapsOf(LIVE), tot = g.reduce((a, x) => a + (x.to - x.from), 0);
+  const el = $("liveGap"); if(!el) return;
+  if(!g.length && !hiddenAt){ el.hidden = true; return; }
+  const last = g[g.length - 1], hm = t => new Date(t).toTimeString().slice(0, 5);
+  el.innerHTML = g.length ? `⚠ Ruta incompleta: ${g.length} ${g.length === 1 ? "tram" : "trams"} sense GPS (${fmtDurShort(tot)}), l'últim de ${hm(last.from)} a ${hm(last.to)}. No apaguis la pantalla amb el botó: deixa l'app oberta${LIVE.eco ? " amb la pantalla negra d'estalvi" : " (o activa el mode estalvi)"}.` : "";
+  el.hidden = !g.length;
 }
 function startWatch(){
   if(!("geolocation" in navigator)){ $("tripErr").textContent = "Aquest navegador no té accés al GPS."; $("tripErr").hidden = false; return false; }
@@ -137,7 +152,7 @@ function setRecUI(){
   $("recDot").hidden = !on;
   $("tripIdle").hidden = on; $("tripLive").hidden = !on;
   $("ctaLabel").textContent = on ? "Sortida en curs · " + fmtDurShort(Date.now()-LIVE.start) : "Inicia una sortida";
-  if(on) $("liveAct").textContent = DEFAULTS[LIVE.act]?.name || "";
+  if(on){ $("liveAct").textContent = DEFAULTS[LIVE.act]?.name || ""; liveGapNote(); }
 }
 
 function startTrip(){
@@ -187,17 +202,27 @@ function summarize(trip){
       if(w && w.dir!=null && s.kn > 1 && s.d > 3){ const p = posOf(twaOf(s.course, w.dir)); pos[p.k].t += s.dt; pos[p.k].d += s.d; } }
   });
   if(trip.pts.length) trip.pts.forEach(p => { maxOff = Math.max(maxOff, hav(trip.pts[0], p)); });
+  const gaps = gapsOf(trip);
   const W = trip.wind.length ? trip.wind : [windNear(trip, (trip.start+(trip.end||Date.now()))/2)].filter(Boolean);
   const wv = W.map(w=>w.wind).filter(x=>x!=null), gv = W.map(w=>w.gust).filter(x=>x!=null), tv = W.map(w=>w.temp).filter(x=>x!=null);
   let sx=0, sy=0; W.forEach(w => { if(w.dir!=null && w.wind!=null){ sx += Math.sin(rad(w.dir))*w.wind; sy += Math.cos(rad(w.dir))*w.wind; } });
   return {
     dur: (trip.end||Date.now()) - trip.start, distNm: dist/NM, movingS: moving,
     avgKn: moving ? (dist/NM)/(moving/3600) : 0, maxKn, maxOffM: maxOff, points: trip.pts.length,
+    gapN: gaps.length, gapS: gaps.reduce((a, g) => a + (g.to - g.from)/1000, 0),
     wind: {avg: wv.length ? wv.reduce((a,b)=>a+b,0)/wv.length : null, min: wv.length?Math.min(...wv):null, max: wv.length?Math.max(...wv):null,
       gust: gv.length ? Math.max(...gv) : null, dir: (sx||sy) ? norm(Math.atan2(sx,sy)*180/Math.PI) : null, temp: tv.length ? tv.reduce((a,b)=>a+b,0)/tv.length : null,
       src: W.some(w=>w.src==="estació") ? "estació "+(STATIONS[trip.station || stKey]?.name||"") : "previsió del model", n: W.length},
     pos
   };
+}
+
+// Trams sense GPS (més de 90 s entre punts): normalment, pantalla apagada o app en segon pla
+const GAP_S = 90;
+function gapsOf(trip){
+  const out = [], P = trip.pts;
+  for(let i = 1; i < P.length; i++) if((P[i].t - P[i-1].t)/1000 > GAP_S) out.push({from: P[i-1].t, to: P[i].t, a: P[i-1], b: P[i]});
+  return out;
 }
 
 /* ---------- mapes ---------- */
@@ -240,8 +265,10 @@ function tripMap(el, trip){
   const m = baseMap(el, true);
   if(P.length < 2){ if(P.length) L.circleMarker([P[0].lat,P[0].lon], {radius:6}).addTo(m); return m; }
   const seg = segments(trip), groups = SPEED_COLORS.map(() => []);
-  seg.forEach(s => { const i = SPEED_BINS.findIndex(b => s.smooth < b); groups[i < 0 ? 4 : i].push([[s.a.lat,s.a.lon],[s.b.lat,s.b.lon]]); });
+  const gaps = gapsOf(trip), isGap = s => (s.b.t - s.a.t)/1000 > GAP_S;
+  seg.filter(s => !isGap(s)).forEach(s => { const i = SPEED_BINS.findIndex(b => s.smooth < b); groups[i < 0 ? 4 : i].push([[s.a.lat,s.a.lon],[s.b.lat,s.b.lon]]); });
   groups.forEach((g,i) => { if(g.length) L.polyline(g, {color: SPEED_COLORS[i], weight:5, opacity:.95}).addTo(m); });
+  if(gaps.length) L.polyline(gaps.map(g => [[g.a.lat,g.a.lon],[g.b.lat,g.b.lon]]), {color:"#8a94a6", weight:3, dashArray:"6 8", opacity:.9}).bindTooltip("Sense GPS (pantalla apagada?)").addTo(m);
   L.circleMarker([P[0].lat,P[0].lon], {radius:7, color:"#fff", weight:2, fillColor:"#34e39a", fillOpacity:1}).bindTooltip("Sortida").addTo(m);
   const e = P[P.length-1]; L.circleMarker([e.lat,e.lon], {radius:7, color:"#fff", weight:2, fillColor:"#ff6476", fillOpacity:1}).bindTooltip("Arribada").addTo(m);
   m.fitBounds(L.latLngBounds(P.map(p=>[p.lat,p.lon])).pad(0.15));
@@ -420,6 +447,7 @@ async function showTrip(id){
     <article class="card"><span class="lbl">${esc(DEFAULTS[t.act]?.name||"")} · ${d.toLocaleDateString("ca",{weekday:"long",day:"numeric",month:"long"})}</span>
       <h2 style="font-size:1.6rem;text-transform:uppercase;margin-top:2px">${esc(t.name || "Sortida de les "+pad(d.getHours())+":"+pad(d.getMinutes()))}</h2>
       <div class="muted" style="font-weight:600;font-size:.85rem">${pad(d.getHours())}:${pad(d.getMinutes())} – ${t.end?new Date(t.end).toTimeString().slice(0,5):"–"} · ${s.points} punts GPS</div></article>
+    ${s.gapN ? `<div class="warnbox">⚠ Aquesta sortida té ${s.gapN} ${s.gapN === 1 ? "tram" : "trams"} sense GPS (${fmtDurShort(s.gapS*1000)} en total), segurament amb la pantalla apagada. Al mapa surten amb línia discontínua: la distància hi és en línia recta i la velocitat no s'hi pot calcular.</div>` : ""}
     <div class="big-stats">
       ${stat("dist","Distància", s.distNm.toFixed(2).replace(".",","), "nm", Math.round(s.distNm*NM)+" m")}
       ${stat("clock","Durada", fmtDurShort(s.dur), "", "En moviment "+fmtDurShort(s.movingS*1000))}
@@ -483,7 +511,9 @@ window.addEventListener("mm-view", e => {
   if(e.detail === "trip" && LIVE) setTimeout(() => { updateLiveMap(); liveMap && liveMap.invalidateSize(); }, 0);
   if(e.detail === "log") renderList();
 });
-document.addEventListener("visibilitychange", () => { if(!LIVE) return; if(document.visibilityState === "visible"){ keepAwake(); sampleWind(); } else saveLive(); });
+document.addEventListener("visibilitychange", () => { if(!LIVE) return;
+  if(document.visibilityState === "visible"){ keepAwake(); sampleWind(); setTimeout(liveGapNote, 4000); hiddenAt = 0; }
+  else { hiddenAt = Date.now(); saveLive(); } });
 window.addEventListener("pagehide", saveLive);
 
 // Recupera una sortida que estava en curs (app tancada o recarregada)
@@ -493,3 +523,25 @@ window.addEventListener("pagehide", saveLive);
   else if(saved) store.del("mm_live");
   setRecUI();
 })();
+
+/* ---------- permisos per gravar la sortida ---------- */
+async function permCheck(){
+  const set = (id, cls, txt) => { const li = $(id); if(!li) return; li.className = cls; if(txt != null) li.querySelector("small").textContent = txt; };
+  if(!("geolocation" in navigator)) set("pmGeo", "bad", "Aquest navegador no té GPS.");
+  else {
+    let st = "prompt";
+    try{ st = (await navigator.permissions.query({name:"geolocation"})).state; }catch(e){}
+    $("pmGeoBtn").hidden = st !== "prompt";
+    if(st === "granted") set("pmGeo", "ok", "Concedida. Si Android ho pregunta, tria «Ubicació precisa».");
+    else if(st === "denied") set("pmGeo", "bad", "Denegada. Activa-la a Ajustaments ▸ Aplicacions ▸ Chrome ▸ Permisos ▸ Ubicació, i a la icona del cadenat de la web.");
+    else set("pmGeo", "wait", "Encara no l'has concedida. Toca «Permet».");
+  }
+  if("wakeLock" in navigator) set("pmWake", "ok", "Compatible: mentre graves, la pantalla no s'apagarà sola.");
+  else set("pmWake", "bad", "Aquest navegador no ho permet: allarga el temps d'apagada de la pantalla a Ajustaments del mòbil.");
+}
+document.addEventListener("click", e => { if(e.target.id === "pmGeoBtn"){
+  $("pmGeo").querySelector("small").textContent = "Esperant la resposta…";
+  navigator.geolocation.getCurrentPosition(() => permCheck(), () => permCheck(), {enableHighAccuracy:true, timeout:20000});
+} });
+window.addEventListener("mm-view", e => { if(e.detail === "trip" && !LIVE) permCheck(); });
+permCheck();

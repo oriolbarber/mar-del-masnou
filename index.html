@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=24">
+<link rel="stylesheet" href="app.css?v=25">
 </head>
 <body>
 <div class="app">
@@ -122,7 +122,19 @@
       <h2 style="font-size:1.4rem;text-transform:uppercase">Nova sortida</h2>
       <p class="note" style="margin-top:6px">Registra la ruta amb el GPS del mòbil i el vent de l'estació del Masnou cada minut. En acabar tindràs un resum amb distància, velocitats, rumbs respecte al vent i el mapa de la ruta.</p>
     </article>
-    <div class="warnbox" id="gpsNote">Mantén l'app oberta i la pantalla encesa durant la sortida: amb la pantalla apagada, el navegador pot aturar el GPS. L'app demana que la pantalla no s'apagui sola.</div>
+    <article class="card perm" id="permCard">
+      <div class="card-h"><span class="lbl">Per gravar la sortida sencera</span></div>
+      <p class="note">Per tenir la ruta, les posicions i les velocitats completes, l'app necessita aquests permisos. <b>Important:</b> una app web no pot fer servir el GPS amb la pantalla apagada (Android i Chrome l'aturen). Per això l'app manté la pantalla encesa; amb el mode estalvi queda negra i gasta molt poc.</p>
+      <ul class="perm-list">
+        <li id="pmGeo"><i class="pm-ic"></i><span><b>Ubicació precisa</b><small id="pmGeoT">Comprovant…</small></span><button class="btn sm" type="button" id="pmGeoBtn" hidden>Permet</button></li>
+        <li id="pmWake"><i class="pm-ic"></i><span><b>Pantalla sempre encesa</b><small id="pmWakeT">Comprovant…</small></span></li>
+        <li id="pmBat" class="pm-info"><i class="pm-ic"></i><span><b>Bateria sense restriccions</b><small>Perquè Android no tanqui l'app: Ajustaments ▸ Aplicacions ▸ Chrome (i Ocata Vent, si apareix) ▸ Bateria ▸ <b>Sense restriccions</b>.</small></span></li>
+        <li id="pmBtn" class="pm-info"><i class="pm-ic"></i><span><b>No premis el botó d'apagar</b><small>Si la pantalla s'apaga, el GPS s'atura i la ruta queda amb forats. L'app t'avisarà dels trams perduts.</small></span></li>
+      </ul>
+      <details class="perm-alt"><summary>Necessites gravar amb la pantalla apagada?</summary>
+        <p class="note">Grava la ruta amb una app de GPS nativa (p. ex. <b>GPS Logger</b>, OsmAnd, Strava o el rellotge) i després, a <b>Historial ▸ Importa GPX</b>, l'Ocata Vent hi afegeix el vent real de l'estació i en fa el resum complet.</p>
+      </details>
+    </article>
     <article class="card">
       <label class="switch-row" for="ecoMode">
         <span><b>Mode estalvi d'energia</b>
@@ -143,6 +155,7 @@
         <span class="src" id="liveGps">Esperant el GPS…</span>
       </div>
     </article>
+    <div class="warnbox" id="liveGap" hidden></div>
     <div class="big-stats" id="liveStats"></div>
     <div class="map" id="liveMap"></div>
     <button class="btn" type="button" id="ecoOn" hidden>Torna a la pantalla d'estalvi</button>
@@ -164,6 +177,7 @@
       <div><span class="eco-l">Rumb</span><span class="eco-v s" id="ecoCog">–</span><span class="eco-u" id="ecoCogU">&nbsp;</span></div>
     </div>
   </div>
+  <div class="eco-tip">Deixa la pantalla així, no la bloquegis amb el botó: si s'apaga, el GPS s'atura.</div>
   <button type="button" class="eco-exit" id="ecoOff">Toca per veure el mapa i aturar la sortida</button>
 </div>
 
@@ -230,9 +244,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=24"></script>
-<script src="trip.js?v=24"></script>
-<script src="maps.js?v=24"></script>
-<script src="windmap.js?v=24"></script>
+<script src="app.js?v=25"></script>
+<script src="trip.js?v=25"></script>
+<script src="maps.js?v=25"></script>
+<script src="windmap.js?v=25"></script>
 </body>
 </html>
