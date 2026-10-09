@@ -55,7 +55,7 @@ function showMapKind(k){
   $("mapRadar").hidden = !(k === "radar" || k === "sat");
   $("mapWindy").hidden = k !== "windy";
   $("mapMb").hidden = k !== "mb";
-  if(k === "radar" || k === "sat"){ requestAnimationFrame(() => { rvMap && rvMap.invalidateSize(); rvLoad(k); }); }
+  if(k === "radar" || k === "sat"){ setTimeout(() => { rvMap && rvMap.invalidateSize(); rvLoad(k); }, 0); }
   else rvPlay(false);
   if(k === "windy" && !$("windyFrame").src) $("windyFrame").src = windyUrl(windyOv);
   if(k === "mb" && !$("mbFrame").src) $("mbFrame").src = MB_URL;

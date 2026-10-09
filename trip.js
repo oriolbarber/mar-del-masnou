@@ -322,7 +322,7 @@ async function showTrip(id){
   $("delTrip").onclick = async () => { if(Date.now()-delAt > 4000){ delAt = Date.now(); $("delTrip").textContent = "Toca de nou per esborrar"; setTimeout(()=>{ const b=$("delTrip"); if(b) b.textContent="Esborra"; }, 4000); return; }
     await DB.del(t.id); renderList(); };
   if(detailMap){ detailMap.remove(); detailMap = null; }
-  requestAnimationFrame(() => { detailMap = tripMap($("tripMap"), t); });
+  setTimeout(() => { detailMap = tripMap($("tripMap"), t); }, 0);
   window.scrollTo({top:0});
 }
 function download(t, kind){
@@ -347,7 +347,7 @@ $("stopTrip").addEventListener("click", stopTrip);
 $("discardTrip").addEventListener("click", discardTrip);
 $("logList").addEventListener("click", e => { const b = e.target.closest("[data-trip]"); if(b) showTrip(+b.dataset.trip); });
 window.addEventListener("mm-view", e => {
-  if(e.detail === "trip" && LIVE) requestAnimationFrame(() => { updateLiveMap(); liveMap && liveMap.invalidateSize(); });
+  if(e.detail === "trip" && LIVE) setTimeout(() => { updateLiveMap(); liveMap && liveMap.invalidateSize(); }, 0);
   if(e.detail === "log") renderList();
 });
 document.addEventListener("visibilitychange", () => { if(!LIVE) return; if(document.visibilityState === "visible"){ keepAwake(); sampleWind(); } else saveLive(); });
