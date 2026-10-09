@@ -359,3 +359,40 @@ td small.obs{display:block;font-family:var(--f-body);font-size:.68rem;font-weigh
 .model-err-row span.best b{color:var(--ideal)}
 .model-err-row span.cur{text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:4px;text-decoration-thickness:2px}
 :root[data-size="big"] .model-err-row{font-size:1.1rem}
+
+/* mapa del vent amb taula lliscant */
+.wm .card-h{align-items:baseline}
+.wm-cap{display:flex;flex-direction:column;align-items:flex-end;font-size:.82rem;line-height:1.25}
+.wm-cap span{color:var(--muted);font-weight:600;font-size:.76rem}
+.wm-cap span.obs{color:var(--accent-2)}
+.wm-wrap{position:relative}
+.wm-map{height:220px;border-radius:14px}
+.wm-now{position:absolute;left:8px;bottom:8px;z-index:500;display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 10px;font-size:.8rem;color:var(--muted);font-weight:600;box-shadow:var(--shadow);max-width:calc(100% - 16px)}
+.wm-now b{color:var(--ink)}
+.wm-big{display:flex;align-items:center;gap:4px;color:var(--ink)}
+.wm-big svg{color:var(--c)}
+.wm-big b{font-family:var(--f-mono);font-size:1.6rem;line-height:1}
+.wm-big small{font-size:.8rem;color:var(--muted)}
+.wm-icon{background:none;border:0}
+.wm-badge{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:4px;background:var(--c);color:#0b1220;border-radius:999px;padding:3px 10px 3px 6px;white-space:nowrap;font:600 12px/1.1 var(--f-body);box-shadow:0 2px 8px #0005;border:2px solid #fff}
+.wm-badge b{font-family:var(--f-mono);font-size:15px}
+.wm-badge small{display:block;font-size:10px;font-weight:600;opacity:.8}
+.wm-badge.wave{background:#1d6fd6;color:#fff}
+.wm-scroll{overflow-x:auto;margin-top:10px;border:1px solid var(--line);border-radius:12px;touch-action:pan-x;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+#wmTable{border-collapse:separate;border-spacing:0;font-size:.82rem;min-width:max-content}
+#wmTable th,#wmTable td{padding:5px 0;width:38px;min-width:38px;text-align:center;border-bottom:1px solid var(--grid);font-family:var(--f-mono);white-space:nowrap;cursor:pointer;user-select:none}
+#wmTable th.wm-lbl{position:sticky;left:0;z-index:2;background:var(--surface);width:64px;min-width:64px;text-align:left;padding-left:8px;font-family:var(--f-head);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:default;border-right:1px solid var(--line)}
+#wmTable th.wm-day{font-family:var(--f-head);font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink);text-align:left;padding-left:8px;border-left:2px solid var(--line);cursor:default}
+#wmTable th.wm-h{color:var(--muted);font-weight:600}
+#wmTable td.wm-col{background:var(--c);color:#0b1220;font-weight:700}
+#wmTable td.wm-col.soft{background:color-mix(in srgb, var(--c) 55%, transparent);color:var(--ink)}
+#wmTable .obs{box-shadow:inset 0 2px 0 var(--accent-2)}
+#wmTable th.obs{color:var(--accent-2)}
+#wmTable .sel{outline:2px solid var(--ink);outline-offset:-2px;position:relative;z-index:1}
+#wmTable th.sel{background:var(--ink);color:var(--bg)}
+#wmTable td svg{display:block;margin:0 auto;color:var(--ink)}
+#wmTable .vd{display:inline-block}
+:root[data-size="big"] #wmTable{font-size:1.05rem}
+:root[data-size="big"] #wmTable th,:root[data-size="big"] #wmTable td{width:48px;min-width:48px;padding:8px 0}
+:root[data-size="big"] .wm-now{font-size:1rem}
+:root[data-size="big"] .wm-big b{font-size:2.2rem}

@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=22">
+<link rel="stylesheet" href="app.css?v=23">
 </head>
 <body>
 <div class="app">
@@ -73,6 +73,12 @@
     <div class="stats" id="stats"></div>
     <article class="card" id="outlook"></article>
   </div>
+
+  <article class="card wm" id="windMap" hidden>
+    <div class="card-h"><span class="lbl">Vent per hores · llisca la taula</span><span class="wm-cap" id="wmCap"></span></div>
+    <div class="wm-wrap"><div class="map wm-map" id="wmMap"></div><div class="wm-now" id="wmNow"></div></div>
+    <div class="wm-scroll" id="wmScroll" tabindex="0" aria-label="Previsió per hores: toca o llisca per veure-la al mapa"></div>
+  </article>
 
   <button class="cta" type="button" data-go="trip" id="ctaTrip">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v14"/><path d="M12 4l7 11h-7"/><path d="M3 19c3 2 6 2 9 0s6-2 9 0"/></svg>
@@ -224,8 +230,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=22"></script>
-<script src="trip.js?v=22"></script>
-<script src="maps.js?v=22"></script>
+<script src="app.js?v=23"></script>
+<script src="trip.js?v=23"></script>
+<script src="maps.js?v=23"></script>
+<script src="windmap.js?v=23"></script>
 </body>
 </html>

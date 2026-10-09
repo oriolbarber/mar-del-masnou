@@ -487,6 +487,7 @@ function renderNow(){
     <div class="chart">${hourChart(td, 7, 21, false)}</div><div class="slots" style="margin-top:6px">${slots}</div>`;
 }
 function renderHours(){
+  if(window.renderWindMap) setTimeout(renderWindMap, 0);
   const td = todayDate(); const start = Math.max(7, Math.min(21, +nowKey().slice(11,13) - 3));
   const errs = modelErrors(), bestE = errs.length ? Math.min(...errs.map(e => e.mae)) : null;
   const errLine = errs.length ? `<div class="model-err"><span class="lbl">Error mitjà d'avui respecte l'estació ${esc(STATIONS[stKey].name)}</span>
