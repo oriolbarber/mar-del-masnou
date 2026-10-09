@@ -327,6 +327,40 @@ async function importGpx(file){
   }catch(e){ msg("No s'ha pogut llegir el fitxer GPX."); }
 }
 
+/* ---------- protecció i còpia de seguretat ---------- */
+// Demana al navegador que no esborri les dades d'aquesta app quan falti espai (a les apps instal·lades sol acceptar-ho)
+async function storagePersisted(){
+  try{ if(!navigator.storage?.persisted) return false; if(await navigator.storage.persisted()) return true; return await navigator.storage.persist(); }catch(e){ return false; }
+}
+const SETTINGS_KEYS = ["mm_act","mm_crit","mm_theme","mm_size","mm_station_v2","mm_eco"];
+async function backupOut(){
+  const msg = t => { $("backupMsg").textContent = t; $("backupMsg").hidden = !t; };
+  try{
+    const trips = (await DB.all()) || [];
+    const settings = {}; SETTINGS_KEYS.forEach(k => { const v = store.get(k); if(v != null) settings[k] = v; });
+    const data = {app:"Ocata Vent", format:1, exportedAt:new Date().toISOString(), settings, trips};
+    const d = new Date(), name = `ocata-vent-copia_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type:"application/json"})); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    msg(`Còpia preparada: ${trips.length === 1 ? "1 sortida" : trips.length+" sortides"} i les preferències (${name}). Guarda-la al Drive o envia-te-la per correu.`);
+  }catch(e){ msg("No s'ha pogut fer la còpia."); }
+}
+async function backupIn(file){
+  const msg = t => { $("backupMsg").textContent = t; $("backupMsg").hidden = !t; };
+  try{
+    const data = JSON.parse(await file.text());
+    if(data.app !== "Ocata Vent" || !Array.isArray(data.trips)){ msg("Aquest fitxer no és una còpia d'Ocata Vent."); return; }
+    const have = new Set(((await DB.all()) || []).map(t => t.id)); let added = 0;
+    for(const t of data.trips){
+      if(!t || typeof t.id !== "number" || !Array.isArray(t.pts) || have.has(t.id)) continue;   // no trepitja les que ja hi són
+      t.wind = Array.isArray(t.wind) ? t.wind : []; await DB.put(t); added++;
+    }
+    if(data.settings) SETTINGS_KEYS.forEach(k => { if(data.settings[k] != null && store.get(k) == null) store.set(k, data.settings[k]); });
+    await renderList();
+    const m = $("backupMsg"); if(m){ m.textContent = added ? `${added === 1 ? "Recuperada 1 sortida" : "Recuperades "+added+" sortides"} de la còpia del ${new Date(data.exportedAt).toLocaleDateString("ca")}.` : "Totes les sortides de la còpia ja hi eren."; m.hidden = false; }
+  }catch(e){ msg("No s'ha pogut llegir la còpia."); }
+}
+
 /* ---------- historial ---------- */
 let detailMap = null;
 async function renderList(){
@@ -337,11 +371,20 @@ async function renderList(){
   const imp = `<article class="card"><div class="import-row"><label class="btn" for="gpxIn" style="display:inline-flex;align-items:center">Importa un GPX</label>
     <span class="note">Ruta gravada amb una altra app o un rellotge (funcionen amb la pantalla apagada). S'hi afegeix el vent real de l'estació d'aquell moment (o el del model si l'estació no en té).</span></div>
     <input type="file" id="gpxIn" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden><div class="msg" id="importMsg" hidden style="margin-top:8px"></div></article>`;
-  if(!trips.length){ $("logList").innerHTML = `<article class="card empty">Encara no hi ha cap sortida desada.<br>Prem «Sortida» per gravar la primera.</article>` + imp; return; }
+  const persisted = await storagePersisted();
+  const bak = `<article class="card"><div class="card-h"><span class="lbl">Còpia de seguretat</span>
+      <span class="src ${persisted ? "live" : ""}"><span class="dot"></span>${persisted ? "Dades protegides al mòbil" : "El navegador pot esborrar-les si falta espai"}</span></div>
+    <p class="note">Les sortides només es guarden en aquest mòbil. Desa'n una còpia de tant en tant (per exemple, al Drive) per no perdre-les si canvies de mòbil o esborres l'app.</p>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" type="button" id="backupOut">Fes una còpia de seguretat</button>
+      <label class="btn" for="backupIn" style="display:inline-flex;align-items:center">Recupera una còpia</label>
+      <input type="file" id="backupIn" accept=".json,application/json" hidden></div>
+    <div class="msg" id="backupMsg" hidden style="margin-top:8px"></div></article>`;
+  if(!trips.length){ $("logList").innerHTML = `<article class="card empty">Encara no hi ha cap sortida desada.<br>Prem «Sortida» per gravar la primera.</article>` + imp + bak; return; }
   $("logList").innerHTML = imp + `<div class="card-h" style="margin:0"><h2 style="font-size:1.3rem;text-transform:uppercase">Sortides</h2><span class="lbl">${trips.length}</span></div><div class="trips">` + trips.map(t => {
     const d = new Date(t.start), s = t.summary || summarize(t);
     return `<button type="button" class="trip" data-trip="${t.id}"><b>${esc(t.name || (DAYS_L[d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()]))}</b><span class="m">${s.distNm.toFixed(1).replace(".",",")} nm</span>
-      <span>${d.toLocaleDateString("ca",{day:"numeric",month:"short",year:"numeric"})} · ${pad(d.getHours())}:${pad(d.getMinutes())} · ${esc(DEFAULTS[t.act]?.short||"")}</span><span class="m" style="font-weight:600;color:var(--muted)">${fmtDurShort(s.dur)} · màx ${r1(s.maxKn)} kn</span></button>`; }).join("") + `</div>`;
+      <span>${d.toLocaleDateString("ca",{day:"numeric",month:"short",year:"numeric"})} · ${pad(d.getHours())}:${pad(d.getMinutes())} · ${esc(DEFAULTS[t.act]?.short||"")}</span><span class="m" style="font-weight:600;color:var(--muted)">${fmtDurShort(s.dur)} · màx ${r1(s.maxKn)} kn</span></button>`; }).join("") + `</div>` + bak;
 }
 function seriesChart(trip){
   const seg = segments(trip); if(seg.length < 3) return "";
@@ -425,7 +468,12 @@ $("startTrip").addEventListener("click", startTrip);
 $("ecoMode").checked = !!store.get("mm_eco");
 $("ecoOff").addEventListener("click", () => { setEco(false); go("trip"); renderLive(); });
 $("ecoOn").addEventListener("click", () => setEco(true));
-$("logList").addEventListener("change", e => { if(e.target.id === "gpxIn" && e.target.files[0]) importGpx(e.target.files[0]); });
+$("logList").addEventListener("change", e => {
+  if(e.target.id === "gpxIn" && e.target.files[0]) importGpx(e.target.files[0]);
+  if(e.target.id === "backupIn" && e.target.files[0]) backupIn(e.target.files[0]);
+});
+$("logList").addEventListener("click", e => { if(e.target.closest("#backupOut")) backupOut(); });
+storagePersisted();
 $("stopTrip").addEventListener("click", stopTrip);
 $("discardTrip").addEventListener("click", discardTrip);
 $("logList").addEventListener("click", e => { const b = e.target.closest("[data-trip]"); if(b) showTrip(+b.dataset.trip); });
