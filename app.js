@@ -90,6 +90,7 @@ function scoreHour(p, c){
   const flags = [];
   if(p.gust!=null && p.gust > c.gust){ s = Math.min(s, 25); flags.push("Ratxes fortes"); }
   else if(p.gust!=null && p.wind!=null && p.gust - p.wind > 10){ s -= 15; flags.push("Racheig"); }
+  if(p.tp!=null && p.tp >= 7 && p.wave!=null && p.wave >= 0.4){ s -= 10; flags.push("Mar de fons"); }
   if(isOffshore(p.dir) && p.wind >= 6){ s = p.wind >= 10 ? Math.min(s-25, 40) : s-25; flags.push("Terral"); }
   const rain = p.code!=null && ((p.code>=61 && p.code<=67) || (p.code>=80 && p.code<=82));
   if(p.code!=null && p.code>=95){ s = 0; flags.push("Tempesta"); }
@@ -102,6 +103,11 @@ function scoreHour(p, c){
   return {score:Math.max(0, Math.min(100, Math.round(s))), flags, low};
 }
 const POC = {k:"poc", t:"Poc vent"};
+// Codi de 3 colors per a cada valor: verd = bo, taronja = es pot però amb limitacions, vermell = no adequat
+function lvWind(w, c){ if(w==null) return null; return (w < c.min || w > c.max) ? "no" : (w < c.iMin || w > c.iMax) ? "marg" : "ideal"; }
+function lvGust(g, c){ if(g==null) return null; return g > c.gust ? "no" : g > c.max ? "marg" : "ideal"; }
+function lvWave(h, c){ if(h==null) return null; return h > c.wMax ? "no" : h > c.wOk ? "marg" : "ideal"; }
+const lvTxt = (k, txt) => k ? `<span class="lv k-${k}">${txt}</span>` : txt;
 const verdict = o => { const sc = (o && typeof o === "object") ? o.score : o;
   if(sc==null) return {k:"no",t:"Sense dades"};
   if(sc < 35 && o && typeof o === "object" && o.low) return POC;
@@ -114,9 +120,14 @@ const URL_FC = `https://api.open-meteo.com/v1/forecast?latitude=${LOC.lat}&longi
   "&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min"+
   "&wind_speed_unit=kn&timezone=Europe%2FMadrid&forecast_days=7";
 const URL_MA = `https://marine-api.open-meteo.com/v1/marine?latitude=${LOC.mlat}&longitude=${LOC.mlon}`+
-  "&hourly=wave_height,wave_direction,wave_period,sea_surface_temperature"+
+  "&hourly=wave_height,wave_direction,wave_period,swell_wave_peak_period,sea_surface_temperature"+
   "&current=wave_height,wave_direction,wave_period,sea_surface_temperature"+
-  "&cell_selection=sea&timezone=Europe%2FMadrid&forecast_days=7";
+  "&cell_selection=sea&timezone=Europe%2FMadrid&forecast_days=7&past_days=1";
+// Boia de Barcelona II (Ports de l'Estat, xarxa costanera REDCOS): 41,32 N 2,20 E, 68 m de fondària, ~20 km al SO del Masnou.
+// Mesura cada hora l'altura significant (Hm0), l'altura màxima, el període de pic i la direcció de procedència.
+const BUOY = {name:"boia de Barcelona", url:"https://portus.puertos.es/portussvr/api/RTData/station/1731?locale=es", params:[13,17,34,20]};
+let BU = store.get("mm_buoy") || {at:0, hours:{}};
+const HMAX_K = 1.6; // l'onada més alta d'una hora sol ser ~1,6 vegades l'altura significant (a la boia avui: 1,4–2,2)
 const STATIONS = {
   ocata:  {name:"Ocata Vent", url:"https://ocata2.meteoelmasnou.cat/meteotemplateLive.txt"},
   masnou: {name:"El Masnou",  url:"https://www.meteoelmasnou.cat/meteotemplateLive.txt"}
@@ -130,9 +141,10 @@ function build(fc, ma){
     wind:H.wind_speed_10m[i], dir:H.wind_direction_10m[i], gust:H.wind_gusts_10m[i], wave:null, wdir:null, per:null, sst:null}; });
   if(ma && ma.hourly){ const M = ma.hourly;
     M.time.forEach((t,i) => { const h = hours[t]; if(!h) return;
-      h.wave = M.wave_height?.[i] ?? null; h.wdir = M.wave_direction?.[i] ?? null; h.per = M.wave_period?.[i] ?? null; h.sst = M.sea_surface_temperature?.[i] ?? null; }); }
+      h.wave = M.wave_height?.[i] ?? null; h.wdir = M.wave_direction?.[i] ?? null; h.per = M.wave_period?.[i] ?? null; h.tp = M.swell_wave_peak_period?.[i] ?? null; h.sst = M.sea_surface_temperature?.[i] ?? null; }); }
+  const mwave = {}; if(ma && ma.hourly) ma.hourly.time.forEach((t,i) => { const v = ma.hourly.wave_height?.[i]; if(v != null) mwave[t] = v; });
   const c = fc.current || {}, mc = (ma && ma.current) || {};
-  return { base: hours, hours, daily: fc.daily, fetchedAt: new Date().toISOString(), marineOk: !!(ma && ma.hourly),
+  return { base: hours, hours, mwave, daily: fc.daily, fetchedAt: new Date().toISOString(), marineOk: !!(ma && ma.hourly),
     nowBase: {t:c.time, temp:c.temperature_2m, code:c.weather_code, wind:c.wind_speed_10m, dir:c.wind_direction_10m, gust:c.wind_gusts_10m,
       wave:mc.wave_height ?? null, per:mc.wave_period ?? null, wdir:mc.wave_direction ?? null, sst:mc.sea_surface_temperature ?? null} };
 }
@@ -165,8 +177,47 @@ function applyModel(){
     hours[t] = a ? Object.assign({}, b, {wind:a.wind, gust:a.gust ?? b.gust, dir:a.dir ?? b.dir, temp:a.temp ?? b.temp, src:model}) : Object.assign({}, b, {src:"auto"});
     if(a) lastAlt = t; }
   DATA.hours = hours; DATA.modelEnd = lastAlt;
+  applyWaves();
   const h = hours[nowKey()];
   DATA.now = Object.assign({}, DATA.nowBase, h && h.src !== "auto" ? {wind:h.wind, gust:h.gust, dir:h.dir, temp:h.temp} : {});
+  if(h) Object.assign(DATA.now, {wave:h.wave, hmax:h.hmax, hmaxE:h.hmaxE, tp:h.tp, wdir:h.wdir ?? DATA.now.wdir, wobs:h.wobs, wcorr:h.wcorr});
+  const lb = lastBuoy(); if(lb && Date.now() - lb.t < 3*3600e3) Object.assign(DATA.now, {wave:lb.hs, hmax:lb.hmax ?? +(lb.hs*HMAX_K).toFixed(2), hmaxE:lb.hmax == null, tp:lb.tp ?? DATA.now.tp, wdir:lb.dir ?? DATA.now.wdir, wobs:true, wcorr:false, wat:lb.t});
+}
+/* ---------- onatge: mesura de la boia i correcció de la previsió ---------- */
+const localKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
+const lastBuoy = () => { const ks = Object.keys(BU.hours || {}).sort(); return ks.length ? BU.hours[ks[ks.length-1]] : null; };
+// Quant s'ha equivocat el model (a la cel·la del Masnou) respecte la boia les darreres 12 hores mesurades
+function waveFactor(){
+  if(!DATA) return null; const nk = nowKey(), mw = DATA.mwave || {};
+  const pairs = Object.keys(BU.hours || {}).filter(k => k <= nk).sort().reverse()
+    .map(k => [BU.hours[k].hs, mw[k] ?? DATA.base[k]?.wave]).filter(([b, m]) => b != null && m != null && m > 0.05).slice(0, 12);
+  if(pairs.length < 4) return null;
+  const b = pairs.reduce((a, p) => a + p[0], 0) / pairs.length, m = pairs.reduce((a, p) => a + p[1], 0) / pairs.length;
+  return {f: Math.min(2, Math.max(0.6, b / m)), buoy: b, model: m, n: pairs.length};
+}
+// Hores passades: mesura real de la boia. Hores futures: previsió × factor de correcció, que s'esvaeix en 48 h
+function applyWaves(){
+  const wf = waveFactor(), nk = nowKey(), now = Date.now(); DATA.wf = wf;
+  for(const t in DATA.hours){ const h = DATA.hours[t], b = BU.hours?.[t];
+    if(b && t <= nk){ Object.assign(h, {wave:b.hs, hmax:b.hmax, tp:b.tp ?? h.tp, wdir:b.dir ?? h.wdir, wobs:true, wfc:h.wave}); continue; }
+    if(h.wave != null && wf && Math.abs(wf.f - 1) > 0.05){
+      const lead = Math.max(0, (new Date(t).getTime() - now) / 3600e3), w = Math.max(0, 1 - lead / 48);
+      if(w > 0){ h.wfc = h.wave; h.wave = +(h.wave * (1 + (wf.f - 1) * w)).toFixed(2); h.wcorr = true; } }
+    if(h.hmax == null && h.wave != null){ h.hmax = +(h.wave * HMAX_K).toFixed(2); h.hmaxE = true; }
+  }
+}
+async function loadBuoy(){
+  try{
+    const r = await fetch(BUOY.url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(BUOY.params), cache:"no-store"});
+    if(!r.ok) throw 0;
+    const hours = {};
+    (await r.json()).forEach(row => { const m = (row.fecha || "").match(/(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d)/); if(!m) return;
+      const d = new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +m[5])), o = {};          // Portus dona les hores en UTC
+      (row.datos || []).forEach(x => { if(x.valor != null && x.valor !== "" && !x.averia) o[x.paramEseoo] = +x.valor / (x.factor || 1); });
+      if(o.Hm0 != null) hours[localKey(d)] = {hs:o.Hm0, hmax:o.Hmax ?? null, tp:o.Tp ?? null, dir:o.MeanDir ?? null, t:d.getTime()}; });
+    if(Object.keys(hours).length){ BU = {at:Date.now(), hours}; store.set("mm_buoy", BU); }
+  }catch(e){}
+  if(DATA){ applyModel(); renderNow(); renderHours(); renderWeek(); if(window.renderWindMap) renderWindMap(); }
 }
 // Error mitjà del vent previst respecte l'estació en les hores ja passades d'avui
 function modelErrors(){
@@ -311,15 +362,20 @@ function roseSvg(o){
 }
 
 /* ---------- gràfic horari ---------- */
-function hourChart(date, h0, h1, wide){
+// Amplada real disponible (px) perquè el gràfic hi càpiga sencer, sense lliscar, i les lletres no s'encongeixin
+function chartW(el){ const w = el && el.clientWidth ? el.clientWidth - (parseFloat(getComputedStyle(el).paddingLeft)||0) - (parseFloat(getComputedStyle(el).paddingRight)||0) : 0;
+  return Math.round(Math.min(760, Math.max(300, w || (innerWidth - 40)))); }
+function hourChart(date, h0, h1, wide, Wpx){
   const c = crit[act], hrs = [];
   for(let h=h0; h<=h1; h++){ const p = hourAt(date,h); if(p) hrs.push({h, p, s:scoreHour(p,c)}); }
   if(hrs.length < 2) return "";
-  const W = wide ? 760 : 380, Hh = wide ? 250 : 108, L = wide ? 34 : 6, R = wide ? 40 : 6, T = wide ? 26 : 22, B = wide ? 40 : 20;
+  const big = document.documentElement.dataset.size === "big";
+  const W = wide ? (Wpx || 760) : 380, Hh = wide ? (big ? 270 : 240) : 108, L = wide ? 30 : 6, R = wide ? 30 : 6, T = wide ? 26 : 22, B = wide ? 40 : 20;
   const pw = W-L-R, ph = Hh-T-B, n = hrs.length, dx = pw/(n-1);
   const maxK = Math.max(20, Math.ceil(Math.max(...hrs.map(x=>x.p.gust||0), c.iMax)/5)*5);
   const maxW = Math.max(1.5, Math.ceil(Math.max(...hrs.map(x=>x.p.wave||0), c.wMax)*2)/2);
   const X = j => L + dx*j, yK = k => T + ph - (k/maxK)*ph, yW = w => T + ph - (w/maxW)*ph;
+  const fs = big ? 13 : 11, thin = dx < 24;  // poc espai entre hores: etiquetes d'hora alternes
   const id = "g"+Math.random().toString(36).slice(2,7);
   let g = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".35"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>`;
   g += `<rect x="${L}" y="${yK(c.iMax)}" width="${pw}" height="${yK(c.iMin)-yK(c.iMax)}" fill="var(--ideal-t)" opacity=".7"/>`;
@@ -338,29 +394,70 @@ function hourChart(date, h0, h1, wide){
     if(lastObs < n-1) g += `<polyline points="${pts.slice(lastObs).map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>`;
     g += `<polyline points="${pts.slice(0, lastObs+1).map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-linejoin="round"/>`;
   } else g += `<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>`;
+  // cursor de l'hora seleccionada (es mou des de JS sense redibuixar)
+  g += `<g class="hsel" style="display:none"><rect x="${-dx/2}" y="${T-18}" width="${dx}" height="${ph+18}" fill="var(--ink)" opacity=".07" rx="4"/><line x1="0" x2="0" y1="${T-18}" y2="${yK(0)}" stroke="var(--ink)" stroke-width="1.5"/></g>`;
   if(wide){ const wp = hrs.map((x,j) => x.p.wave==null ? null : [X(j), yW(x.p.wave)]).filter(Boolean);
     if(wp.length>1) g += `<polyline points="${wp.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--sea)" stroke-width="2" stroke-dasharray="1 0"/>`;
     for(let w=0; w<=maxW+1e-9; w+=0.5) g += `<text x="${W-R+6}" y="${yW(w)+4}" font-size="11" fill="var(--sea)" font-family="IBM Plex Mono,monospace">${w.toLocaleString("ca")}</text>`;
     g += `<text x="${L-6}" y="12" text-anchor="end" font-size="10" fill="var(--muted)" font-family="Rajdhani,sans-serif" font-weight="700">KN</text><text x="${W-R+6}" y="12" font-size="10" fill="var(--sea)" font-family="Rajdhani,sans-serif" font-weight="700">M</text>`; }
   hrs.forEach((x,j) => {
-    const [px,py] = pts[j], k = verdict(x.s).k;
-    g += `<circle cx="${px}" cy="${py}" r="${wide?4:3.5}" fill="var(--${k})" stroke="${x.p.obs ? "var(--accent-2)" : "var(--surface)"}" stroke-width="${x.p.obs ? 2 : 1.5}"/>`;
-    const showLbl = wide || j%2===0;
-    if(showLbl) g += `<text x="${px}" y="${py-9}" text-anchor="middle" font-size="${wide?11:10}" font-weight="700" fill="var(--ink)" font-family="IBM Plex Mono,monospace">${r0(x.p.wind)}</text>`;
-    if(wide){ g += `<g transform="translate(${px-7} ${Hh-B+4})" style="color:var(--ink)">${arrow(x.p.dir,14)}</g>`; g += `<text x="${px}" y="${Hh-4}" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${x.h}</text>`; }
+    const [px,py] = pts[j], k = verdict(x.s).k, kw = lvWind(x.p.wind, c);
+    g += `<circle cx="${px}" cy="${py}" r="${wide?4.5:3.5}" fill="var(--${k})" stroke="${x.p.obs ? "var(--accent-2)" : "var(--surface)"}" stroke-width="${x.p.obs ? 2 : 1.5}"/>`;
+    const showLbl = wide ? (!thin || j%2===0 || dx >= 18) : j%2===0;
+    if(showLbl) g += `<text x="${px}" y="${py-9}" text-anchor="middle" font-size="${wide?fs:10}" font-weight="700" fill="var(--${kw || "ink"})" font-family="IBM Plex Mono,monospace">${r0(x.p.wind)}</text>`;
+    if(wide){ g += `<g transform="translate(${px-7} ${Hh-B+4})" style="color:var(--ink)">${arrow(x.p.dir,14)}</g>`; if(!thin || j%2===0) g += `<text x="${px}" y="${Hh-4}" text-anchor="middle" font-size="${fs}" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${x.h}</text>`; }
     else if(j%2===0) g += `<text x="${px}" y="${Hh-4}" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${x.h}h</text>`;
   });
-  return `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Vent per hores">${g}</svg>`;
+  return `<svg class="hc" viewBox="0 0 ${W} ${Hh}" data-date="${date}" data-hs="${hrs.map(x=>x.h).join(",")}" data-l="${L}" data-dx="${dx}" data-w="${W}" role="img" aria-label="Vent per hores: toca o arrossega per triar una hora">${g}</svg>`;
 }
-const chartLegend = wide => `<div class="legend"><span><span class="sw" style="background:var(--accent-2)"></span>Vent mesurat a l'estació</span><span><span class="sw" style="background:var(--accent)"></span>Vent previst (kn)</span><span><span class="sw" style="background:var(--muted)"></span>Ratxa</span>${wide?`<span><span class="sw" style="background:var(--sea)"></span>Onada (m)</span>`:""}<span><span class="sw" style="background:var(--ideal-t);height:10px"></span>Vent ideal ${esc(DEFAULTS[act].short)}</span><span><span class="vd" style="background:var(--ideal)"></span>Punt = idoneïtat</span></div>`;
+/* ---------- hora seleccionada, compartida pel gràfic, el mapa de vent i les taules ---------- */
+let SEL = null;
+const selKey = () => (SEL && DATA && DATA.hours[SEL]) ? SEL : nowKey();
+function readout(k){
+  const date = k.slice(0,10), h = +k.slice(11,13), p = hourAt(date, h); if(!p) return "";
+  const c = crit[act], v = verdict(scoreHour(p, c)), d = new Date(date+"T12:00:00");
+  const day = date === todayDate() ? "" : DAYS_L[d.getDay()]+" "+d.getDate()+" · ";
+  return `<span class="rd-h"><b>${day}${pad(h)}:00</b><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span>${p.obs ? `<small class="obs">mesurat</small>` : ""}</span>
+    <span class="rd-v"><span>${arrow(p.dir,14)} Vent ${lvTxt(lvWind(p.wind,c), r0(p.wind)+" kn")} ${windAbbr(p.dir)}</span><span>Ratxa ${lvTxt(lvGust(p.gust,c), r0(p.gust)+" kn")}</span>
+    <span>Onada ${lvTxt(lvWave(p.wave,c), r1(p.wave)+" m")}${p.hmax!=null ? ` <small>(màx ${p.hmaxE?"≈":""}${r1(p.hmax)})</small>` : ""}${p.tp!=null||p.per!=null ? ` · ${r0(p.tp ?? p.per)} s` : ""}</span></span>`;
+}
+function applySel(){
+  if(!DATA) return; const k = selKey(), date = k.slice(0,10), h = String(+k.slice(11,13));
+  document.querySelectorAll("svg.hc").forEach(svg => { const d = svg.dataset, g = svg.querySelector(".hsel"); if(!g) return;
+    const j = d.date === date ? d.hs.split(",").indexOf(h) : -1;
+    if(j < 0){ g.style.display = "none"; return; }
+    g.setAttribute("transform", `translate(${(+d.l) + (+d.dx)*j} 0)`); g.style.display = ""; });
+  document.querySelectorAll(".hc-read").forEach(el => { el.innerHTML = readout(k); });
+  document.querySelectorAll("tr[data-k]").forEach(tr => tr.classList.toggle("sel", tr.dataset.k === k));
+}
+// src: "chart" | "table" | "wm" (el mapa ja s'ha mogut tot sol)
+function selectHour(k, src){
+  if(!DATA || !DATA.hours[k]) return; SEL = k; applySel();
+  if(src !== "wm" && window.wmSelect) wmSelect(k, true);
+}
+window.SEL_K = () => SEL;
+window.mmSel = (k) => { if(DATA && DATA.hours[k]){ SEL = k; applySel(); } };
+let hcDrag = null;
+function hcPick(svg, clientX){
+  const r = svg.getBoundingClientRect(), d = svg.dataset, hs = d.hs.split(",");
+  const x = (clientX - r.left) * (+d.w) / r.width;
+  const j = Math.max(0, Math.min(hs.length-1, Math.round((x - (+d.l)) / (+d.dx))));
+  const k = hourKey(d.date, +hs[j]); if(k !== SEL) selectHour(k, "chart");
+}
+document.addEventListener("pointerdown", e => { const svg = e.target.closest && e.target.closest("svg.hc"); if(!svg) return; hcDrag = svg; hcPick(svg, e.clientX); });
+document.addEventListener("pointermove", e => { if(hcDrag) hcPick(hcDrag, e.clientX); });
+["pointerup","pointercancel"].forEach(t => document.addEventListener(t, () => { hcDrag = null; }));
+document.addEventListener("click", e => { const tr = e.target.closest && e.target.closest("tr[data-k]"); if(tr) selectHour(tr.dataset.k, "table"); });
+const chartLegend = wide => `<div class="legend"><span><span class="sw" style="background:var(--accent-2)"></span>Vent mesurat</span><span><span class="sw" style="background:var(--accent)"></span>Vent previst (kn)</span><span><span class="sw" style="background:var(--muted)"></span>Ratxa</span>${wide?`<span><span class="sw" style="background:var(--sea)"></span>Onada (m)</span>`:""}<span><span class="sw" style="background:var(--ideal-t);height:10px"></span>Vent ideal ${esc(DEFAULTS[act].short)}</span></div>
+  <div class="legend lv-legend"><span><span class="vd" style="background:var(--ideal)"></span>Bo</span><span><span class="vd" style="background:var(--marg)"></span>Amb limitacions</span><span><span class="vd" style="background:var(--no)"></span>No adequat</span></div>`;
 function hourTable(date, h0, h1){
   const c = crit[act], nk = nowKey(); let rows = "";
   for(let h=h0; h<=h1; h++){ const p = hourAt(date,h); if(!p) continue; const s = scoreHour(p,c), v = verdict(s);
-    rows += `<tr class="${p.t===nk?"now-row":""}"><td class="l">${h}:00${p.obs ? `<small class="obs">mesurat</small>` : ""}</td><td class="l"><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span></td>
+    rows += `<tr data-k="${p.t}" class="${p.t===nk?"now-row":""}"><td class="l">${h}:00${p.obs ? `<small class="obs">mesurat</small>` : ""}</td><td class="l"><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span></td>
       <td class="l"><span style="display:inline-flex;align-items:center;gap:4px">${arrow(p.dir,14)}${windAbbr(p.dir)}</span></td>
-      <td><b>${r0(p.wind)}</b></td><td>${r0(p.gust)}</td><td>${r1(p.wave)}</td><td>${r1(p.per)}</td><td>${r0(p.temp)}°</td><td>${r1(p.sst)}°</td><td>${p.pp ?? "–"}%</td>
+      <td><b>${lvTxt(lvWind(p.wind,c), r0(p.wind))}</b></td><td>${lvTxt(lvGust(p.gust,c), r0(p.gust))}</td><td>${lvTxt(lvWave(p.wave,c), r1(p.wave))}${p.wobs ? `<small class="obs">boia</small>` : ""}</td><td>${p.hmax!=null ? (p.hmaxE?"≈":"")+r1(p.hmax) : "–"}</td><td>${r0(p.tp ?? p.per)}</td><td>${r0(p.temp)}°</td><td>${r1(p.sst)}°</td><td>${p.pp ?? "–"}%</td>
       <td class="warn">${s.flags.map(esc).join(" · ")}</td></tr>`; }
-  return `<div class="tbl"><table><thead><tr><th class="l">Hora</th><th class="l">Estat</th><th class="l">Dir.</th><th>Vent</th><th>Ratxa</th><th>Onada</th><th>Per. s</th><th>Aire</th><th>Aigua</th><th>Pluja</th><th class="l">Avisos</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  return `<div class="tbl"><table><thead><tr><th class="l">Hora</th><th class="l">Estat</th><th class="l">Dir.</th><th>Vent</th><th>Ratxa</th><th>Onada</th><th>Màx.</th><th>Per. s</th><th>Aire</th><th>Aigua</th><th>Pluja</th><th class="l">Avisos</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 /* ---------- informació oficial: bandera de bany (Gencat) i avisos (Meteocat) ---------- */
@@ -459,9 +556,9 @@ function renderNow(){
   $("flags").innerHTML = s.flags.map(f => `<span class="flag">${esc(f)}</span>`).join("");
   const i = DATA.daily.time.indexOf(todayDate());
   $("stats").innerHTML =
-    stat("gust", "Ratxa", r0(n.gust), "kn", n.gust!=null&&n.wind!=null ? "+"+r0(n.gust-n.wind)+" sobre la mitjana" : "") +
-    stat("wave", "Onada", r1(fc.wave), "m", fc.wdir!=null ? "de "+windName(fc.wdir) : "") +
-    stat("per", "Període", r1(fc.per), "s", fc.per!=null ? (fc.per<5 ? "mar de vent, curta" : fc.per<8 ? "mar mixta" : "mar de fons") : "") +
+    stat("gust", "Ratxa", lvTxt(lvGust(n.gust,c), r0(n.gust)), "kn", n.gust!=null&&n.wind!=null ? "+"+r0(n.gust-n.wind)+" sobre la mitjana" : "") +
+    stat("wave", "Onada", lvTxt(lvWave(fc.wave,c), r1(fc.wave)), "m", (fc.hmax!=null ? `màx ${fc.hmaxE?"≈":""}${r1(fc.hmax)} m · ` : "") + waveSrc(fc)) +
+    stat("per", "Període", r1(tpOf(fc)), "s", tpOf(fc)!=null ? (tpOf(fc)<5 ? "mar de vent, curta" : tpOf(fc)<7 ? "mar mixta" : "mar de fons: a la platja creix") + (fc.wdir!=null ? " · de "+windAbbr(fc.wdir) : "") : "") +
     stat("air", "Aire", r0(n.temp), "°C", live ? `Hum. ${r0(ST.hum)}% · ${r0(ST.pres)} hPa` : "") +
     stat("water", "Aigua", r1(fc.sst), "°C", suit(fc.sst)) +
     stat("sun", "Posta", DATA.daily.sunset[i]?.slice(11,16) || "–", "", "Sortida "+(DATA.daily.sunrise[i]?.slice(11,16)||"–"));
@@ -472,9 +569,9 @@ function renderNow(){
     return `<div class="bslot k-${vv.k}${a.past?" past":""}"><span class="bk">${sl.label}</span><span class="tag"><span class="vd"></span>${vv.t}</span><span class="bw">${r0(a.wind)}<small>/${r0(a.gust)} kn</small></span><span class="bx">${windName(a.dir)} · ${r1(a.wave)} m</span></div>`; }).join("");
   $("bigNow").innerHTML = `<div class="bverdict k-${v.k}"><span>${v.t}</span><small>${s.score ?? "–"}/100</small></div>
     ${s.flags.length ? `<div class="flags">${s.flags.map(f => `<span class="flag">${esc(f)}</span>`).join("")}</div>` : ""}
-    ${row("Vent", r0(n.wind), "kn", `<span style="display:inline-flex;align-items:center;gap:6px">${arrow(n.dir,26)}${windName(n.dir)} · ${kind}</span>`)}
-    ${row("Ratxa", r0(n.gust), "kn")}
-    ${row("Onada", r1(fc.wave), "m", fc.per!=null ? r1(fc.per)+" s"+(fc.wdir!=null?" · de "+windName(fc.wdir):"") : "")}
+    ${row("Vent", lvTxt(lvWind(n.wind,c), r0(n.wind)), "kn", `<span style="display:inline-flex;align-items:center;gap:6px">${arrow(n.dir,26)}${windName(n.dir)} · ${kind}</span>`)}
+    ${row("Ratxa", lvTxt(lvGust(n.gust,c), r0(n.gust)), "kn")}
+    ${row("Onada", lvTxt(lvWave(fc.wave,c), r1(fc.wave)), "m", (fc.hmax!=null ? `màx ${r1(fc.hmax)} m · ` : "") + (tpOf(fc)!=null ? r0(tpOf(fc))+" s" : "")+(fc.wdir!=null?" · de "+windName(fc.wdir):""))}
     ${row("Aire", r0(n.temp), "°C")}
     ${row("Aigua", r1(fc.sst), "°C", suit(fc.sst))}
     ${row("Posta del sol", DATA.daily.sunset[i]?.slice(11,16) || "–", "")}
@@ -483,8 +580,15 @@ function renderNow(){
     const vv = verdict(a);
     return `<div class="sl k-${vv.k}${a.past?" past":""}"><div class="h">${sl.label}<span class="tag"><span class="vd"></span>${vv.t}</span></div>
       <div class="w">${arrow(a.dir,13)}${r0(a.wind)}<small>/${r0(a.gust)} kn</small></div><div class="o">${windAbbr(a.dir)} · ${r1(a.wave)} m</div></div>`; }).join("");
-  $("outlook").innerHTML = `<div class="card-h" style="margin-bottom:4px"><span class="lbl">Avui · vent per hores · ${esc(MODELS[model].label)}</span>${wxIcon(fc.code,18)}</div>
-    <div class="chart">${hourChart(td, 7, 21, false)}</div><div class="slots" style="margin-top:6px">${slots}</div>`;
+  const ol = $("outlook");
+  ol.innerHTML = `<div class="card-h" style="margin-bottom:6px"><span class="lbl">Avui · toca o arrossega el gràfic</span><span class="muted" style="display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700">${esc(MODELS[model].label)}${wxIcon(fc.code,18)}</span></div>
+    <div class="slots">${slots}</div><div class="hc-read"></div><div class="chart">${hourChart(td, 7, 21, true, chartW(ol))}</div>${chartLegend(true)}`;
+  applySel();
+}
+const tpOf = p => p.tp ?? p.per ?? null;
+function waveSrc(p){
+  if(p.wobs){ const m = p.wat ? Math.round((Date.now() - p.wat)/60000) : null; return "boia BCN" + (m!=null ? (m < 90 ? ` fa ${m} min` : ` fa ${Math.round(m/60)} h`) : ""); }
+  return p.wcorr ? "previsió corregida" : (p.wdir!=null ? "de "+windName(p.wdir) : "previsió");
 }
 function renderHours(){
   if(window.renderWindMap) setTimeout(renderWindMap, 0);
@@ -493,7 +597,11 @@ function renderHours(){
   const errLine = errs.length ? `<div class="model-err"><span class="lbl">Error mitjà d'avui respecte l'estació ${esc(STATIONS[stKey].name)}</span>
       <div class="model-err-row">${errs.map(e => `<span class="${e.mae === bestE ? "best" : ""}${e.k === model ? " cur" : ""}">${esc(MODELS[e.k].label)} <b>${r1(e.mae)} kn</b></span>`).join("")}</div></div>` : "";
   const end = DATA.modelEnd && model !== "auto" ? (() => { const d = new Date(DATA.modelEnd); return ` Previsió ${MODELS[model].label} fins ${DAYS_L[d.getDay()].toLowerCase()} a les ${pad(d.getHours())} h; després, automàtica.`; })() : "";
-  $("hoursBody").innerHTML = `${errLine}<div class="chart wide">${hourChart(td, 7, 21, true)}</div>${chartLegend(true)}${end ? `<p class="note">${esc(end.trim())}</p>` : ""}${hourTable(td, start, 21)}`;
+  const wf = DATA.wf, lb = lastBuoy();
+  const waveLine = lb ? `<div class="model-err"><span class="lbl">Onada · ${esc(BUOY.name)} (Ports de l'Estat, a 20 km)</span>
+      <p class="note">Les hores passades mostren l'onada mesurada a la boia. ${wf && Math.abs(wf.f-1) > 0.05 ? `Les darreres ${wf.n} hores la previsió per al Masnou ha donat ${r1(wf.model)} m de mitjana i la boia n'ha mesurat ${r1(wf.buoy)}: la previsió de les properes hores es corregeix ×${r1(wf.f)} (la correcció s'esvaeix en 2 dies).` : "La previsió coincideix prou amb la boia."} «Màx.» és l'onada més alta esperable en una hora (unes ${String(HMAX_K).replace(".",",")} vegades l'altura significant).</p></div>` : "";
+  $("hoursBody").innerHTML = `${errLine}${waveLine}${end ? `<p class="note">${esc(end.trim())}</p>` : ""}<p class="note">Toca una fila per veure-la al gràfic i al mapa.</p>${hourTable(td, start, 21)}`;
+  applySel();
   const best = SLOTS.map(sl => ({sl, a:slotAgg(td, sl, crit[act])})).filter(x=>x.a && !x.a.past).sort((a,b)=>b.a.score-a.a.score)[0];
   $("peekHours").textContent = best ? "Millor: "+best.sl.label.toLowerCase()+" · "+verdict(best.a).t.toLowerCase() : "";
 }
@@ -512,9 +620,10 @@ function renderWeek(){
       <span>${wxIcon(D.weather_code[i],20)}</span><span class="pills">${pills}</span>
       <span class="wr">${ws.length?r0(Math.min(...ws))+"–"+r0(Math.max(...ws)):"–"} kn<small>${windAbbr(domDir)} · ${wv.length?r1(Math.max(...wv)):"–"} m</small></span>
       <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>`;
-    if(open) html += `<div class="wdetail"><div class="chart wide">${hourChart(date, 7, 21, true)}</div>${chartLegend(true)}</div>`;
+    if(open) html += `<div class="wdetail"><div class="hc-read"></div><div class="chart">${hourChart(date, 7, 21, true, chartW($("week")) - 8)}</div>${chartLegend(true)}</div>`;
   });
   $("week").innerHTML = html;
+  applySel();
   $("peekWeek").textContent = good ? good+" franges bones o ideals" : "Cap franja bona";
 }
 function renderCrit(){
@@ -581,15 +690,19 @@ tick(); setInterval(tick, 20000);
 
 /* ---------- events ---------- */
 $("actSeg").addEventListener("click", e => { const b = e.target.closest("button[data-act]"); if(!b) return; act = b.dataset.act; store.set("mm_act", act); render(); });
-$("week").addEventListener("click", e => { const b = e.target.closest(".wrow"); if(!b) return; openDay = openDay === b.dataset.day ? null : b.dataset.day; renderWeek(); });
-$("refresh").addEventListener("click", () => { load(); loadStation(); loadObs(); loadInfo(); });
+$("week").addEventListener("click", e => { const b = e.target.closest(".wrow"); if(!b) return; openDay = openDay === b.dataset.day ? null : b.dataset.day; renderWeek();
+  if(openDay && (!SEL || SEL.slice(0,10) !== openDay)) selectHour(hourKey(openDay, Math.max(7, Math.min(21, +selKey().slice(11,13)))), "chart"); });
+let rsT = null, rsW = innerWidth;
+addEventListener("resize", () => { if(innerWidth === rsW) return; rsW = innerWidth; clearTimeout(rsT); rsT = setTimeout(() => { if(DATA){ renderNow(); renderWeek(); } }, 200); });
+$("refresh").addEventListener("click", () => { load(); loadStation(); loadObs(); loadInfo(); loadBuoy(); });
 $("src").addEventListener("click", () => { stKey = stKey === "ocata" ? "masnou" : "ocata"; store.set("mm_station_v2", stKey); ST = null; renderNow(); loadStation(); loadObs(); });
 $("crit").addEventListener("change", e => { const k = e.target.dataset.k; if(!k) return; const v = parseFloat(e.target.value); if(isNaN(v)) return;
   crit[act][k] = v; store.set("mm_crit", crit); renderCrit(); if(DATA){ renderNow(); renderHours(); renderWeek(); } });
 $("resetCrit").addEventListener("click", () => { crit[act] = JSON.parse(JSON.stringify(DEFAULTS[act])); store.set("mm_crit", crit); render(); });
 
 renderSeg(); renderCrit();
-load(); loadStation(); loadObs(); loadInfo();
+load(); loadStation(); loadObs(); loadInfo(); loadBuoy();
+setInterval(() => { if(document.visibilityState === "visible") loadBuoy(); }, 20*60*1000);
 setInterval(() => { if(document.visibilityState === "visible") loadInfo(); }, 15*60*1000);
 setInterval(load, 30*60*1000);
 setInterval(() => { if(document.visibilityState === "visible") loadObs(); }, 10*60*1000);

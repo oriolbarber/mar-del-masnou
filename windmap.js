@@ -4,9 +4,9 @@ const WM_BEACH = [41.4795, 2.3265];      // punt fix: platja d'Ocata (on som)
 const WM_ZOOM = 13;
 const WM_H0 = 6, WM_H1 = 22;             // hores que es mostren cada dia
 const WM_GAP = 34;                       // separació mínima (°) entre les dues etiquetes perquè no es tapin
-const KCOL = [[0,"#6d8fd8"],[4,"#3fa9d0"],[8,"#35c49a"],[12,"#7fd13b"],[16,"#e3d23a"],[20,"#f29a2e"],[25,"#e5483b"],[30,"#b33fc0"]];
-const kcol = k => { let c = KCOL[0][1]; for(const [v, col] of KCOL) if(k != null && k >= v) c = col; return c; };
-let wmMap = null, wmPin = null, wmSel = null, wmDrag = false;
+// Colors: el mateix codi de 3 colors de tota l'app (verd / taronja / vermell segons l'embarcació triada)
+const kv = k => k ? `var(--${k})` : "var(--muted)";
+let wmMap = null, wmPin = null, wmSel = null, wmDrag = false, wmProg = 0;
 const wmAng = {w: null, v: null};        // angle acumulat de cada etiqueta (per girar sempre pel camí curt)
 
 function wmKeys(){
@@ -49,7 +49,7 @@ function wmFlag(key, dir, html, bg, fg){
   f.classList.toggle("flip", flip);
   f.querySelector(".wm-txt").innerHTML = html;
 }
-function wmSelect(k, scroll){
+function wmShow(k, scroll){
   if(!DATA || !DATA.hours[k]) return;
   wmSel = k;
   const [date, hh] = [k.slice(0, 10), +k.slice(11, 13)];
@@ -58,8 +58,10 @@ function wmSelect(k, scroll){
   const d = new Date(date + "T12:00:00");
   const src = p.obs ? `Mesurat a l'estació ${STATIONS[stKey].name}` : `Previsió ${MODELS[p.src === "auto" ? "auto" : model].label}`;
   $("wmCap").innerHTML = `<b>${DAYS_L[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} · ${pad(hh)}:00</b><span class="${p.obs ? "obs" : ""}">${esc(src)}</span>`;
-  $("wmNow").innerHTML = `<span><span class="wm-key" style="--c:${kcol(p.wind)}"></span>Vent ${windName(p.dir)} ${r0(p.dir)}° · <b>${r1(p.wind)} kn</b> · ratxa <b>${r0(p.gust)}</b></span>
-    <span><span class="wm-key" style="--c:#1d6fd6"></span>Onada ${p.wdir != null ? windName(p.wdir) + " " + r0(p.wdir) + "° · " : ""}<b>${r1(p.wave)} m</b> · ${r1(p.per)} s</span>`;
+  const c = crit[act], lw = lvWind(p.wind, c), lg = lvGust(p.gust, c), lo = lvWave(p.wave, c), v = verdict(scoreHour(p, c));
+  $("wmNow").innerHTML = `<span><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span></span>
+    <span>Vent ${windName(p.dir)} ${r0(p.dir)}° · ${lvTxt(lw, r1(p.wind)+" kn")} · ratxa ${lvTxt(lg, r0(p.gust))}</span>
+    <span>Onada ${p.wdir != null ? windName(p.wdir) + " " + r0(p.wdir) + "° · " : ""}${lvTxt(lo, r1(p.wave)+" m")}${p.hmax != null ? ` (màx ${p.hmaxE ? "≈" : ""}${r1(p.hmax)})` : ""} · ${r0(p.tp ?? p.per)} s${p.wobs ? " · boia" : ""}</span>`;
   if(wmEnsureMap()){
     // separa una mica les etiquetes si vent i onada vénen gairebé del mateix lloc
     let dw = p.dir, dv = p.wave != null ? p.wdir : null;
@@ -67,12 +69,14 @@ function wmSelect(k, scroll){
       const diff = ((dv - dw + 540) % 360) - 180;
       if(Math.abs(diff) < WM_GAP){ const mid = dw + diff / 2, s = diff >= 0 ? 1 : -1; dw = mid - s * WM_GAP / 2; dv = mid + s * WM_GAP / 2; }
     }
-    wmFlag("w", dw, `<b>${r1(p.wind)}</b> kn<small>R${r0(p.gust)}</small>`, kcol(p.wind), "#0b1220");
-    wmFlag("v", dv, `<b>${r1(p.wave)}</b> m<small>${r0(p.per)} s</small>`, "#1d6fd6", "#ffffff");
+    wmFlag("w", dw, `<b>${r1(p.wind)}</b> kn<small>R${r0(p.gust)}</small>`, kv(lw), "var(--on-k)");
+    wmFlag("v", dv, `<b>${r1(p.wave)}</b> m<small>${r0(p.tp ?? p.per)} s</small>`, kv(lo), "var(--on-k)");
   }
   if(scroll){ const td = document.querySelector(`#wmTable th[data-k="${k}"]`); const box = $("wmScroll");
-    if(td && box) box.scrollLeft = Math.max(0, td.offsetLeft - box.clientWidth / 2 + td.offsetWidth / 2); }
+    if(td && box){ wmProg = Date.now(); box.scrollLeft = Math.max(0, td.offsetLeft - box.clientWidth / 2 + td.offsetWidth / 2); } }
+  if(window.mmSel) mmSel(k);
 }
+window.wmSelect = (k, scroll) => { if(DATA && DATA.hours[k] && document.querySelector(`#wmTable th[data-k="${k}"]`)) wmShow(k, scroll); };
 function renderWindMap(){
   const host = $("windMap"); if(!host || !DATA) return;
   const keys = wmKeys(); if(!keys.length){ host.hidden = true; return; }
@@ -87,22 +91,23 @@ function renderWindMap(){
   const html = `<table id="wmTable"><thead><tr><th class="wm-lbl"></th>${dayRow}</tr>
     <tr><th class="wm-lbl">h</th>${cols.map(x => `<th data-k="${x.k}" class="wm-h${x.p.obs ? " obs" : ""}">${x.h}</th>`).join("")}</tr></thead><tbody>
     ${row("Dir.", x => cell(x, wmArrow(x.p.dir, 16)))}
-    ${row("Vent kn", x => cell(x, r0(x.p.wind), `--c:${kcol(x.p.wind)}`, "wm-col"))}
-    ${row("Ratxa", x => cell(x, r0(x.p.gust), `--c:${kcol(x.p.gust)}`, "wm-col soft"))}
     ${row("Estat", x => { const v = verdict(scoreHour(x.p, c)); return cell(x, `<span class="vd" style="background:var(--${v.k})" title="${v.t}"></span>`); })}
-    ${row("Onada m", x => cell(x, r1(x.p.wave)))}
-    ${row("Per. s", x => cell(x, r0(x.p.per)))}
+    ${row("Vent kn", x => cell(x, r0(x.p.wind), "", "wm-col k-" + (lvWind(x.p.wind, c) || "none")))}
+    ${row("Ratxa", x => cell(x, r0(x.p.gust), "", "wm-col soft k-" + (lvGust(x.p.gust, c) || "none")))}
+    ${row("Onada m", x => cell(x, r1(x.p.wave), "", "wm-col k-" + (lvWave(x.p.wave, c) || "none")))}
+    ${row("Màx. m", x => cell(x, x.p.hmax != null ? r1(x.p.hmax) : "–", "", "soft-t"))}
+    ${row("Per. s", x => cell(x, r0(x.p.tp ?? x.p.per)))}
     ${row("°C", x => cell(x, r0(x.p.temp)))}
     ${row("Pluja", x => cell(x, x.p.pp != null ? x.p.pp + "%" : "–"))}
     </tbody></table>`;
   $("wmScroll").innerHTML = html;
   const nk = nowKey(), def = keys.find(x => x.k === nk)?.k || keys.find(x => x.k > nk)?.k || keys[0].k;
-  const keep = wmSel && DATA.hours[wmSel] ? wmSel : def;
-  wmSelect(keep, true);
+  const want = (window.SEL_K && window.SEL_K()) || wmSel, keep = want && keys.some(x => x.k === want) ? want : def;
+  wmShow(keep, true);
   setTimeout(() => { if(wmMap){ wmMap.invalidateSize(false); wmMap.setView(WM_BEACH, WM_ZOOM, {animate:false}); } }, 0);
 }
 // Tocar o lliscar el dit per la taula canvia l'hora del mapa
-function wmPick(e, center){ const t = document.elementFromPoint(e.clientX, e.clientY)?.closest?.("[data-k]"); if(t && (t.dataset.k !== wmSel || center)) wmSelect(t.dataset.k, !!center); }
+function wmPick(e, center){ const t = document.elementFromPoint(e.clientX, e.clientY)?.closest?.("[data-k]"); if(t && (t.dataset.k !== wmSel || center)) wmShow(t.dataset.k, !!center); }
 // Un toc porta l'hora triada al centre de la franja (com a Windy); arrossegar amb el ratolí la va canviant
 document.addEventListener("click", e => { if(e.target.closest && e.target.closest("#wmTable")) wmPick(e, true); });
 document.addEventListener("pointerdown", e => { if(e.pointerType === "mouse" && e.target.closest("#wmTable")) wmDrag = true; });
@@ -111,12 +116,13 @@ document.addEventListener("pointerup", () => { wmDrag = false; });
 // Al mòbil el dit fa lliscar la taula: l'hora seleccionada és la del centre de la franja
 let wmScrollT = null;
 document.addEventListener("scroll", e => { if(e.target && e.target.id === "wmScroll"){ clearTimeout(wmScrollT); wmScrollT = setTimeout(() => {
+  if(Date.now() - wmProg < 900) return;   // el desplaçament l'ha fet l'app (en triar una hora), no el dit
   const box = $("wmScroll"), r = box.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + 40;
-  const t = document.elementFromPoint(x, y)?.closest?.("[data-k]"); if(t && t.dataset.k !== wmSel) wmSelect(t.dataset.k, false); }, 60); } }, true);
+  const t = document.elementFromPoint(x, y)?.closest?.("[data-k]"); if(t && t.dataset.k !== wmSel) wmShow(t.dataset.k, false); }, 60); } }, true);
 document.addEventListener("keydown", e => { if(!e.target.closest || !e.target.closest("#wmScroll")) return;
   const keys = wmKeys().map(x => x.k), i = keys.indexOf(wmSel);
-  if(e.key === "ArrowRight" && i < keys.length - 1){ e.preventDefault(); wmSelect(keys[i + 1], true); }
-  if(e.key === "ArrowLeft" && i > 0){ e.preventDefault(); wmSelect(keys[i - 1], true); } });
-window.addEventListener("mm-theme", () => wmSel && wmSelect(wmSel, false));
+  if(e.key === "ArrowRight" && i < keys.length - 1){ e.preventDefault(); wmShow(keys[i + 1], true); }
+  if(e.key === "ArrowLeft" && i > 0){ e.preventDefault(); wmShow(keys[i - 1], true); } });
+window.addEventListener("mm-theme", () => wmSel && wmShow(wmSel, false));
 window.renderWindMap = renderWindMap;
 if(DATA) renderWindMap();
