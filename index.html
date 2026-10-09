@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=28">
+<link rel="stylesheet" href="app.css?v=29">
 </head>
 <body>
 <div class="app">
@@ -184,15 +184,27 @@
 <!-- ============ MAPES ============ -->
 <section class="view" id="view-map" hidden>
   <div class="seg maps-seg" role="group" aria-label="Tipus de mapa" id="mapSeg">
-    <button type="button" data-map="mb" aria-pressed="true">meteoblue</button>
-    <button type="button" data-map="radar" aria-pressed="false">Pluja</button>
-    <button type="button" data-map="windy" aria-pressed="false">Vent</button>
-    <button type="button" data-map="cam" aria-pressed="false">Webcam</button>
+    <button type="button" data-map="mb" aria-pressed="true"><b>Vent</b><small>meteoblue</small></button>
+    <button type="button" data-map="windy" aria-pressed="false"><b>Onades</b><small>Windy</small></button>
+    <button type="button" data-map="radar" aria-pressed="false"><b>Pluja</b><small>radar</small></button>
+    <button type="button" data-map="cam" aria-pressed="false"><b>Webcam</b><small>Nàutic</small></button>
   </div>
   <article class="card" id="mapMb">
-    <div class="card-h"><span class="lbl">Mapes animats · meteoblue</span></div>
+    <div class="card-h"><span class="lbl">Vent · meteoblue</span></div>
     <div class="frame"><iframe id="mbFrame" title="Mapes animats de meteoblue" sandbox="allow-scripts allow-same-origin"></iframe></div>
     <p class="note">Tria la capa al menú del mapa: animació del vent, ratxes, núvols i pluja, satèl·lit o temperatura. El botó ▶ anima la previsió. Font: meteoblue.</p>
+  </article>
+  <article class="card" id="mapWindy" hidden>
+    <div class="card-h"><span class="lbl">Onades · Windy</span></div>
+    <div class="seg" role="group" aria-label="Capa" id="windySeg">
+      <button type="button" data-ov="waves" aria-pressed="true">Onades</button>
+      <button type="button" data-ov="wind" aria-pressed="false">Vent</button>
+      <button type="button" data-ov="gust" aria-pressed="false">Ratxes</button>
+      <button type="button" data-ov="rain" aria-pressed="false">Pluja</button>
+      <button type="button" data-ov="clouds" aria-pressed="false">Núvols</button>
+    </div>
+    <div class="frame"><iframe id="windyFrame" title="Mapa animat de Windy" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+    <p class="note">Mou la línia de temps a sota del mapa per veure les properes hores i dies. Toca el mapa per veure els valors d'un punt. Font: Windy.com.</p>
   </article>
   <article class="card" id="mapRadar" hidden>
     <div class="card-h"><span class="lbl" id="radarTitle">Radar de pluja · últimes 2 h</span><span class="src" id="radarTime">–</span></div>
@@ -207,18 +219,6 @@
     <div class="card-h"><span class="lbl">Webcam en directe · Nàutic Masnou</span></div>
     <div class="frame cam"><iframe id="camFrame" title="Webcam en directe del Nàutic Masnou" sandbox="allow-scripts allow-same-origin" allow="autoplay; fullscreen"></iframe></div>
     <p class="note">Imatge en directe de la platja i la rampa del Nàutic Masnou. Font: Nàutic Masnou, a través de meteoelmasnou.cat.</p>
-  </article>
-  <article class="card" id="mapWindy" hidden>
-    <div class="card-h"><span class="lbl">Previsió animada · Windy (ECMWF)</span></div>
-    <div class="seg" role="group" aria-label="Capa" id="windySeg">
-      <button type="button" data-ov="wind" aria-pressed="true">Vent</button>
-      <button type="button" data-ov="gust" aria-pressed="false">Ratxes</button>
-      <button type="button" data-ov="waves" aria-pressed="false">Onades</button>
-      <button type="button" data-ov="rain" aria-pressed="false">Pluja</button>
-      <button type="button" data-ov="clouds" aria-pressed="false">Núvols</button>
-    </div>
-    <div class="frame"><iframe id="windyFrame" title="Mapa animat de Windy" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
-    <p class="note">Mou la línia de temps a sota del mapa per veure les properes hores i dies. Toca el mapa per veure els valors d'un punt. Font: Windy.com.</p>
   </article>
 </section>
 
@@ -244,9 +244,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=28"></script>
-<script src="trip.js?v=28"></script>
-<script src="maps.js?v=28"></script>
-<script src="windmap.js?v=28"></script>
+<script src="app.js?v=29"></script>
+<script src="trip.js?v=29"></script>
+<script src="maps.js?v=29"></script>
+<script src="windmap.js?v=29"></script>
 </body>
 </html>

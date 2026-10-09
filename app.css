@@ -452,3 +452,8 @@ tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--ink)}
 .legend-d summary::before{content:"?";display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;border:1.5px solid currentColor;font-size:.7rem}
 .legend-d[open] summary{color:var(--ink)}
 .legend-d .legend{margin-top:4px}
+#mapSeg button{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;gap:1px;padding-top:4px;padding-bottom:4px}
+#mapSeg button b{font-weight:700}
+#mapSeg button small{font-size:.68rem;font-weight:600;opacity:.75;text-transform:none;letter-spacing:0}
+.maps-seg{align-self:stretch}
+#mapSeg button{flex:1 1 0}

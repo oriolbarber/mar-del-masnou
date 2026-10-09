@@ -5,7 +5,7 @@ const WINDY_PRODUCT = {wind:"ecmwf", gust:"ecmwf", waves:"ecmwfWaves", rain:"ecm
 const CAM_URL = "https://plataforma.streamingbarcelona.com/masnou/es/embed/";
 const MB_URL = "https://www.meteoblue.com/ca/weather/maps/widget/41.476N2.318E?windAnimation=1&gust=1&satellite=1&cloudsAndPrecipitation=1&temperature=1&sunshine=0&extremeForecastIndex=0&geoloc=fixed&tempunit=C&windunit=kn&lengthunit=metric&zoom=8&autowidth=auto";
 
-let mapKind = "mb", rvMap = null, rvFrames = [], rvLayers = [], rvIdx = 0, rvTimer = null, rvKind = null, rvLoadedAt = 0, windyOv = "wind";
+let mapKind = "mb", rvMap = null, rvFrames = [], rvLayers = [], rvIdx = 0, rvTimer = null, rvKind = null, rvLoadedAt = 0, windyOv = "waves";
 
 const PLAY_IC = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>`;
 const PAUSE_IC = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`;
@@ -67,7 +67,8 @@ function showMapKind(k){
 
 $("mapSeg").addEventListener("click", e => { const b = e.target.closest("button[data-map]"); if(b) showMapKind(b.dataset.map); });
 $("windySeg").addEventListener("click", e => { const b = e.target.closest("button[data-ov]"); if(!b) return; windyOv = b.dataset.ov;
-  document.querySelectorAll("#windySeg button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); $("windyFrame").src = windyUrl(windyOv); });
+  document.querySelectorAll("#windySeg button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); $("windyFrame").src = windyUrl(windyOv);
+  const t = {waves:"Onades", wind:"Vent", gust:"Ratxes", rain:"Pluja", clouds:"Núvols"}[windyOv]; document.querySelector("#mapWindy .lbl").textContent = t + " · Windy"; });
 $("radarPlay").addEventListener("click", () => rvPlay(!rvTimer));
 $("radarSlider").addEventListener("input", e => { rvPlay(false); rvShow(+e.target.value); });
 $("radarPlay").innerHTML = PLAY_IC;
