@@ -159,6 +159,35 @@ async function loadStation(){
   if(DATA) renderNow();
   return ST;
 }
+/* ---------- registres horaris de l'estació (avui) ---------- */
+// Mateixa consulta que la «Taula interactiva» de la web: Avui, per hores, vent mitjà, ratxa màx., direcció i temperatura
+let OBS = {key:null, at:0, hours:{}};
+const UNIT_KN = {kmh:0.539957, "km/h":0.539957, ms:1.943844, "m/s":1.943844, mph:0.868976, kt:1, kn:1, kts:1};
+async function loadObs(){
+  const key = stKey, base = new URL(STATIONS[key].url).origin;
+  const q = "value=h&interval=today&from=&to=&parameters=avgbracketLWbracketR,maxbracketLGbracketR,avgbracketLBbracketR,avgbracketLTbracketR";
+  try{
+    const r = await fetch(base+"/pages/station/tableAjax.php?"+q+"&t="+Date.now(), {cache:"no-store"}); if(!r.ok) throw 0;
+    const doc = new DOMParser().parseFromString(await r.text(), "text/html");
+    const unitTxt = (doc.querySelector("thead th:nth-child(2)")?.textContent || "").toLowerCase();
+    const f = UNIT_KN[(unitTxt.match(/\(([^)]+)\)/) || [])[1]?.replace(/\s/g,"")] ?? KMH;
+    const hours = {};
+    doc.querySelectorAll("tbody tr").forEach(tr => {
+      const td = [...tr.children].map(x => x.textContent.trim()); const m = td[0]?.match(/(\d\d)\/(\d\d)\/(\d\d)\s+(\d\d):/); if(!m) return;
+      const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+      const w = num(td[1]), g = num(td[2]);
+      hours[`20${m[3]}-${m[2]}-${m[1]}T${m[4]}:00`] = {wind: w==null?null:w*f, gust: g==null?null:g*f, dir: num(td[3]), temp: num(td[4])};
+    });
+    if(key === stKey){ OBS = {key, at: Date.now(), hours}; if(DATA){ renderNow(); renderHours(); renderWeek(); } }
+  }catch(e){}
+}
+// Hora combinada: mesura real de l'estació per a les hores passades i l'actual; previsió per a la resta
+function hourAt(date, h){
+  const k = hourKey(date, h), f = DATA.hours[k]; if(!f) return null;
+  const o = OBS.key === stKey ? OBS.hours[k] : null;
+  if(o && o.wind != null && k <= nowKey()) return Object.assign({}, f, {wind:o.wind, gust:o.gust ?? f.gust, dir:o.dir ?? f.dir, temp:o.temp ?? f.temp, obs:true, fc:f});
+  return f;
+}
 const stFresh = () => !!(ST && (Date.now() - ST.at) < 30*60*1000);
 const stamp = iso => { const d = new Date(iso); return d.toLocaleDateString("ca",{day:"numeric",month:"short"})+" a les "+d.toLocaleTimeString("ca",{hour:"2-digit",minute:"2-digit"}); };
 const hourKey = (date,h) => date+"T"+pad(h)+":00";
@@ -172,7 +201,7 @@ function forecastAt(ms){
 }
 
 function slotAgg(date, slot, c){
-  const hs = slot.hours.map(h => DATA.hours[hourKey(date,h)]).filter(Boolean);
+  const hs = slot.hours.map(h => hourAt(date,h)).filter(Boolean);
   if(!hs.length) return null;
   const vals = f => hs.map(f).filter(x=>x!=null);
   const avg = f => { const v = vals(f); return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null; };
@@ -228,7 +257,7 @@ function roseSvg(o){
 /* ---------- gràfic horari ---------- */
 function hourChart(date, h0, h1, wide){
   const c = crit[act], hrs = [];
-  for(let h=h0; h<=h1; h++){ const p = DATA.hours[hourKey(date,h)]; if(p) hrs.push({h, p, s:scoreHour(p,c)}); }
+  for(let h=h0; h<=h1; h++){ const p = hourAt(date,h); if(p) hrs.push({h, p, s:scoreHour(p,c)}); }
   if(hrs.length < 2) return "";
   const W = wide ? 760 : 380, Hh = wide ? 250 : 108, L = wide ? 34 : 6, R = wide ? 40 : 6, T = wide ? 26 : 22, B = wide ? 40 : 20;
   const pw = W-L-R, ph = Hh-T-B, n = hrs.length, dx = pw/(n-1);
@@ -245,14 +274,21 @@ function hourChart(date, h0, h1, wide){
   const pts = hrs.map((x,j) => [X(j), yK(x.p.wind||0)]), gpts = hrs.map((x,j) => [X(j), yK(x.p.gust||0)]);
   g += `<path d="M${X(0)} ${yK(0)} L${pts.map(p=>p.join(" ")).join(" L")} L${X(n-1)} ${yK(0)} Z" fill="url(#${id})"/>`;
   g += `<polyline points="${gpts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
-  g += `<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>`;
+  const lastObs = hrs.reduce((a,x,j) => x.p.obs ? j : a, -1);
+  if(lastObs >= 0){
+    // previsió que hi havia per a les hores ja passades (fina, per comparar)
+    const pf = hrs.slice(0, lastObs+1).map((x,j) => [X(j), yK((x.p.fc||x.p).wind||0)]);
+    if(pf.length > 1) g += `<polyline points="${pf.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 3" opacity=".6"/>`;
+    if(lastObs < n-1) g += `<polyline points="${pts.slice(lastObs).map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>`;
+    g += `<polyline points="${pts.slice(0, lastObs+1).map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-linejoin="round"/>`;
+  } else g += `<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>`;
   if(wide){ const wp = hrs.map((x,j) => x.p.wave==null ? null : [X(j), yW(x.p.wave)]).filter(Boolean);
     if(wp.length>1) g += `<polyline points="${wp.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--sea)" stroke-width="2" stroke-dasharray="1 0"/>`;
     for(let w=0; w<=maxW+1e-9; w+=0.5) g += `<text x="${W-R+6}" y="${yW(w)+4}" font-size="11" fill="var(--sea)" font-family="IBM Plex Mono,monospace">${w.toLocaleString("ca")}</text>`;
     g += `<text x="${L-6}" y="12" text-anchor="end" font-size="10" fill="var(--muted)" font-family="Rajdhani,sans-serif" font-weight="700">KN</text><text x="${W-R+6}" y="12" font-size="10" fill="var(--sea)" font-family="Rajdhani,sans-serif" font-weight="700">M</text>`; }
   hrs.forEach((x,j) => {
     const [px,py] = pts[j], k = verdict(x.s).k;
-    g += `<circle cx="${px}" cy="${py}" r="${wide?4:3.5}" fill="var(--${k})" stroke="var(--surface)" stroke-width="1.5"/>`;
+    g += `<circle cx="${px}" cy="${py}" r="${wide?4:3.5}" fill="var(--${k})" stroke="${x.p.obs ? "var(--accent-2)" : "var(--surface)"}" stroke-width="${x.p.obs ? 2 : 1.5}"/>`;
     const showLbl = wide || j%2===0;
     if(showLbl) g += `<text x="${px}" y="${py-9}" text-anchor="middle" font-size="${wide?11:10}" font-weight="700" fill="var(--ink)" font-family="IBM Plex Mono,monospace">${r0(x.p.wind)}</text>`;
     if(wide){ g += `<g transform="translate(${px-7} ${Hh-B+4})" style="color:var(--ink)">${arrow(x.p.dir,14)}</g>`; g += `<text x="${px}" y="${Hh-4}" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${x.h}</text>`; }
@@ -260,11 +296,11 @@ function hourChart(date, h0, h1, wide){
   });
   return `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Vent per hores">${g}</svg>`;
 }
-const chartLegend = wide => `<div class="legend"><span><span class="sw" style="background:var(--accent)"></span>Vent mitjà (kn)</span><span><span class="sw" style="background:var(--muted)"></span>Ratxa</span>${wide?`<span><span class="sw" style="background:var(--sea)"></span>Onada (m)</span>`:""}<span><span class="sw" style="background:var(--ideal-t);height:10px"></span>Vent ideal ${esc(DEFAULTS[act].short)}</span><span><span class="vd" style="background:var(--ideal)"></span>Punt = idoneïtat</span></div>`;
+const chartLegend = wide => `<div class="legend"><span><span class="sw" style="background:var(--accent-2)"></span>Vent mesurat a l'estació</span><span><span class="sw" style="background:var(--accent)"></span>Vent previst (kn)</span><span><span class="sw" style="background:var(--muted)"></span>Ratxa</span>${wide?`<span><span class="sw" style="background:var(--sea)"></span>Onada (m)</span>`:""}<span><span class="sw" style="background:var(--ideal-t);height:10px"></span>Vent ideal ${esc(DEFAULTS[act].short)}</span><span><span class="vd" style="background:var(--ideal)"></span>Punt = idoneïtat</span></div>`;
 function hourTable(date, h0, h1){
   const c = crit[act], nk = nowKey(); let rows = "";
-  for(let h=h0; h<=h1; h++){ const p = DATA.hours[hourKey(date,h)]; if(!p) continue; const s = scoreHour(p,c), v = verdict(s);
-    rows += `<tr class="${p.t===nk?"now-row":""}"><td class="l">${h}:00</td><td class="l"><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span></td>
+  for(let h=h0; h<=h1; h++){ const p = hourAt(date,h); if(!p) continue; const s = scoreHour(p,c), v = verdict(s);
+    rows += `<tr class="${p.t===nk?"now-row":""}"><td class="l">${h}:00${p.obs ? `<small class="obs">mesurat</small>` : ""}</td><td class="l"><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span></td>
       <td class="l"><span style="display:inline-flex;align-items:center;gap:4px">${arrow(p.dir,14)}${windAbbr(p.dir)}</span></td>
       <td><b>${r0(p.wind)}</b></td><td>${r0(p.gust)}</td><td>${r1(p.wave)}</td><td>${r1(p.per)}</td><td>${r0(p.temp)}°</td><td>${r1(p.sst)}°</td><td>${p.pp ?? "–"}%</td>
       <td class="warn">${s.flags.map(esc).join(" · ")}</td></tr>`; }
@@ -330,7 +366,7 @@ function renderNow(){
     <div class="chart">${hourChart(td, 7, 21, false)}</div><div class="slots" style="margin-top:6px">${slots}</div>`;
 }
 function renderHours(){
-  const td = todayDate(); const start = Math.max(7, Math.min(21, +nowKey().slice(11,13) - 1));
+  const td = todayDate(); const start = Math.max(7, Math.min(21, +nowKey().slice(11,13) - 3));
   $("hoursBody").innerHTML = `<div class="chart wide">${hourChart(td, 7, 21, true)}</div>${chartLegend(true)}${hourTable(td, start, 21)}`;
   const best = SLOTS.map(sl => ({sl, a:slotAgg(td, sl, crit[act])})).filter(x=>x.a && !x.a.past).sort((a,b)=>b.a.score-a.a.score)[0];
   $("peekHours").textContent = best ? "Millor: "+best.sl.label.toLowerCase()+" · "+verdict(best.a).t.toLowerCase() : "";
@@ -416,17 +452,18 @@ tick(); setInterval(tick, 20000);
 /* ---------- events ---------- */
 $("actSeg").addEventListener("click", e => { const b = e.target.closest("button[data-act]"); if(!b) return; act = b.dataset.act; store.set("mm_act", act); render(); });
 $("week").addEventListener("click", e => { const b = e.target.closest(".wrow"); if(!b) return; openDay = openDay === b.dataset.day ? null : b.dataset.day; renderWeek(); });
-$("refresh").addEventListener("click", () => { load(); loadStation(); });
-$("src").addEventListener("click", () => { stKey = stKey === "ocata" ? "masnou" : "ocata"; store.set("mm_station_v2", stKey); ST = null; renderNow(); loadStation(); });
+$("refresh").addEventListener("click", () => { load(); loadStation(); loadObs(); });
+$("src").addEventListener("click", () => { stKey = stKey === "ocata" ? "masnou" : "ocata"; store.set("mm_station_v2", stKey); ST = null; renderNow(); loadStation(); loadObs(); });
 $("crit").addEventListener("change", e => { const k = e.target.dataset.k; if(!k) return; const v = parseFloat(e.target.value); if(isNaN(v)) return;
   crit[act][k] = v; store.set("mm_crit", crit); renderCrit(); if(DATA){ renderNow(); renderHours(); renderWeek(); } });
 $("resetCrit").addEventListener("click", () => { crit[act] = JSON.parse(JSON.stringify(DEFAULTS[act])); store.set("mm_crit", crit); render(); });
 
 renderSeg(); renderCrit();
-load(); loadStation();
+load(); loadStation(); loadObs();
 setInterval(load, 30*60*1000);
+setInterval(() => { if(document.visibilityState === "visible") loadObs(); }, 10*60*1000);
 setInterval(() => { if(document.visibilityState === "visible") loadStation(); }, 60*1000);
-document.addEventListener("visibilitychange", () => { if(document.visibilityState !== "visible") return; loadStation(); if(DATA && Date.now()-new Date(DATA.fetchedAt) > 20*60*1000) load(); });
+document.addEventListener("visibilitychange", () => { if(document.visibilityState !== "visible") return; loadStation(); if(Date.now() - OBS.at > 5*60*1000) loadObs(); if(DATA && Date.now()-new Date(DATA.fetchedAt) > 20*60*1000) load(); });
 
 /* ---------- instal·lació ---------- */
 let deferredPrompt = null;
