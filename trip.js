@@ -182,7 +182,7 @@ function summarize(trip){
     avgKn: moving ? (dist/NM)/(moving/3600) : 0, maxKn, maxOffM: maxOff, points: trip.pts.length,
     wind: {avg: wv.length ? wv.reduce((a,b)=>a+b,0)/wv.length : null, min: wv.length?Math.min(...wv):null, max: wv.length?Math.max(...wv):null,
       gust: gv.length ? Math.max(...gv) : null, dir: (sx||sy) ? norm(Math.atan2(sx,sy)*180/Math.PI) : null, temp: tv.length ? tv.reduce((a,b)=>a+b,0)/tv.length : null,
-      src: W.some(w=>w.src==="estació") ? "estació meteoelmasnou.cat" : "previsió del model", n: W.length},
+      src: W.some(w=>w.src==="estació") ? "estació "+(STATIONS[stKey]?.name||"") : "previsió del model", n: W.length},
     pos
   };
 }
