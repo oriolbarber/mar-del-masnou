@@ -265,3 +265,70 @@ button.src{border:1px solid var(--line);background:var(--surface-2);border-radiu
   .ib{width:34px;height:34px;border-radius:10px}
   .ib svg{width:17px;height:17px}
 }
+
+/* panell de visualització */
+.view-panel{position:sticky;top:calc(58px + env(safe-area-inset-top,0px));z-index:999;display:flex;flex-direction:column;gap:12px;margin-bottom:12px;box-shadow:0 10px 30px #0004}
+.vp-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+
+/* ===== lletra gran (presbícia): text i xifres grans, menys gràfics ===== */
+.big-now{display:none}
+:root[data-size="big"] body{font-size:19px;line-height:1.45}
+:root[data-size="big"] .now-grid,
+:root[data-size="big"] .now .flags,
+:root[data-size="big"] .stats,
+:root[data-size="big"] #outlook{display:none}
+:root[data-size="big"] .big-now{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+:root[data-size="big"] .hero{grid-template-columns:1fr}
+.bverdict{display:flex;align-items:baseline;justify-content:space-between;gap:10px;border-radius:14px;padding:10px 16px;background:var(--kt);border:2px solid var(--k);margin-bottom:8px}
+.bverdict span{font-family:var(--f-head);font-weight:700;font-size:3rem;line-height:1;text-transform:uppercase;letter-spacing:.03em;color:var(--k)}
+.bverdict small{font-family:var(--f-mono);font-weight:700;font-size:1.4rem;color:var(--ink)}
+.brow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:0 12px;padding:10px 2px;border-bottom:1px solid var(--grid)}
+.brow .bk{font-family:var(--f-head);font-weight:700;font-size:1.35rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.brow .bv{font-family:var(--f-mono);font-weight:700;font-size:2.6rem;line-height:1.05;text-align:right;letter-spacing:-.02em}
+.brow .bv small{font-size:1.1rem;color:var(--muted);margin-left:4px;letter-spacing:0}
+.brow .bx{grid-column:1/-1;font-size:1.1rem;font-weight:600;color:var(--ink)}
+.bslots{display:flex;flex-direction:column;gap:8px;padding-top:12px}
+.bslots>.bk{font-family:var(--f-head);font-weight:700;font-size:1.35rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.bslot{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;border-radius:12px;padding:10px 14px;background:var(--kt);border:2px solid var(--k)}
+.bslot .bk{font-family:var(--f-head);font-weight:700;font-size:1.4rem;text-transform:uppercase}
+.bslot .tag{font-size:1.1rem;justify-self:end}
+.bslot .bw{font-family:var(--f-mono);font-weight:700;font-size:1.9rem}
+.bslot .bw small{font-size:1rem;color:var(--muted)}
+.bslot .bx{font-size:1.05rem;font-weight:600;text-align:right}
+.bslot.past{opacity:.55}
+/* la resta de l'app, més gran */
+:root[data-size="big"] .lbl{font-size:1rem}
+:root[data-size="big"] .src{font-size:.95rem}
+:root[data-size="big"] .tabs button{font-size:1rem;min-height:60px}
+:root[data-size="big"] .tabs svg{width:26px;height:26px}
+:root[data-size="big"] body{padding-block:0 calc(96px + env(safe-area-inset-bottom,0px))}
+:root[data-size="big"] details.sec>summary h2{font-size:1.5rem}
+:root[data-size="big"] details.sec>summary .peek{font-size:1rem}
+:root[data-size="big"] table{font-size:1.05rem}
+:root[data-size="big"] th{font-size:.9rem}
+:root[data-size="big"] .wrow{grid-template-columns:minmax(0,1.2fr) minmax(0,1.3fr) minmax(0,1fr) 22px;padding:14px 2px}
+:root[data-size="big"] .wrow>span:nth-child(2){display:none}
+:root[data-size="big"] .wrow .d b{font-size:1.4rem}
+:root[data-size="big"] .wrow .d span{font-size:.95rem}
+:root[data-size="big"] .wrow .pill{height:34px;font-size:1rem}
+:root[data-size="big"] .wrow .wr{font-size:1.15rem}
+:root[data-size="big"] .wrow .wr small{font-size:.95rem}
+:root[data-size="big"] .chart.wide svg{min-width:640px}
+:root[data-size="big"] .legend,:root[data-size="big"] .note{font-size:1rem}
+:root[data-size="big"] .cta{font-size:1.45rem;min-height:64px}
+:root[data-size="big"] .btn{font-size:1.1rem;min-height:50px}
+:root[data-size="big"] .big-stats{grid-template-columns:1fr}
+:root[data-size="big"] .big-stats .stat .v{font-size:2.6rem}
+:root[data-size="big"] .stat .lbl{font-size:1.05rem}
+:root[data-size="big"] .stat .x{font-size:.95rem}
+:root[data-size="big"] .timer{font-size:3.6rem}
+:root[data-size="big"] .trip b{font-size:1.35rem}
+:root[data-size="big"] .trip span{font-size:1rem}
+:root[data-size="big"] .pos{grid-template-columns:100px minmax(0,1fr) 130px;font-size:1.05rem}
+:root[data-size="big"] .seg button{font-size:1.1rem;min-height:46px}
+:root[data-size="big"] .act-seg button{min-height:40px}
+:root[data-size="big"] .eco-v{font-size:7.5rem}
+:root[data-size="big"] .eco-v.s{font-size:3.6rem}
+:root[data-size="big"] .eco-l{font-size:1.15rem}
+:root[data-size="big"] .msg{font-size:1.05rem}
+:root[data-size="big"] footer{font-size:.95rem}

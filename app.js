@@ -264,9 +264,9 @@ function hourTable(date, h0, h1){
 /* ---------- render ---------- */
 // Siluetes de les embarcacions: patí (casc doble, una vela), windsurf (taula i vela amb wishbone), Hobie Cat (catamarà amb major i floc)
 const BOAT_IC = {
-  pati: `<path d="M12.5 2.5v14"/><path d="M12.5 3.5 19 15.5h-6.5"/><path d="M3 17.5h18l-1.6 2.5H4.8z"/><path d="M6 22h12"/>`,
+  pati: `<path d="M17 3.5L18.5 16.5"/><path d="M17 4L8 15L18 15"/><path d="M3 17.5L21.5 17.5L21.5 19L4.5 19Z"/><path d="M2 19L20.5 19"/>`,
   windsurf: `<path d="M3 20.5c4 1.2 13 1.2 18-1.5"/><path d="M8.5 19.5 13 2.5"/><path d="M13 2.5c4.5 3 6.5 8 5.5 13L9.6 18"/><path d="M10.6 11.5l7.6 1.2"/>`,
-  hobie: `<path d="M12.5 2.5v14"/><path d="M12.5 3.5 18.5 15.5h-6"/><path d="M11.5 5.5 6.5 15.5h5"/><path d="M3 17.5h18l-1.6 2.5H4.8z"/><path d="M6 22h12"/>`
+  hobie: `<path d="M15 3L14.5 16.5"/><path d="M15.5 3.5L20.5 15.5L15.5 15.5"/><path d="M14.5 3.5L6.5 15.5L13.5 15.5"/><path d="M3 17.5L21 17.5L20 19.5L5 19.5Z"/><path d="M3.5 20L18 20"/>`
 };
 const boatIcon = (k, z) => `<svg width="${z||22}" height="${z||22}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${BOAT_IC[k]}</svg>`;
 function renderSeg(){
@@ -299,6 +299,19 @@ function renderNow(){
     stat("water", "Aigua", r1(fc.sst), "°C", suit(fc.sst)) +
     stat("sun", "Posta", DATA.daily.sunset[i]?.slice(11,16) || "–", "", "Sortida "+(DATA.daily.sunrise[i]?.slice(11,16)||"–"));
   const td = todayDate();
+  // Vista de lletra gran: només xifres i paraules, sense indicadors gràfics
+  const row = (k, v, u, x) => `<div class="brow"><span class="bk">${k}</span><span class="bv">${v}${u?`<small>${u}</small>`:""}</span>${x?`<span class="bx">${x}</span>`:""}</div>`;
+  const bslots = SLOTS.map(sl => { const a = slotAgg(td, sl, c); if(!a) return ""; const vv = verdict(a.score);
+    return `<div class="bslot k-${vv.k}${a.past?" past":""}"><span class="bk">${sl.label}</span><span class="tag"><span class="vd"></span>${vv.t}</span><span class="bw">${r0(a.wind)}<small>/${r0(a.gust)} kn</small></span><span class="bx">${windName(a.dir)} · ${r1(a.wave)} m</span></div>`; }).join("");
+  $("bigNow").innerHTML = `<div class="bverdict k-${v.k}"><span>${v.t}</span><small>${s.score ?? "–"}/100</small></div>
+    ${s.flags.length ? `<div class="flags">${s.flags.map(f => `<span class="flag">${esc(f)}</span>`).join("")}</div>` : ""}
+    ${row("Vent", r0(n.wind), "kn", `<span style="display:inline-flex;align-items:center;gap:6px">${arrow(n.dir,26)}${windName(n.dir)} · ${kind}</span>`)}
+    ${row("Ratxa", r0(n.gust), "kn")}
+    ${row("Onada", r1(fc.wave), "m", fc.per!=null ? r1(fc.per)+" s"+(fc.wdir!=null?" · de "+windName(fc.wdir):"") : "")}
+    ${row("Aire", r0(n.temp), "°C")}
+    ${row("Aigua", r1(fc.sst), "°C", suit(fc.sst))}
+    ${row("Posta del sol", DATA.daily.sunset[i]?.slice(11,16) || "–", "")}
+    <div class="bslots"><span class="bk">Avui</span>${bslots}</div>`;
   const slots = SLOTS.map(sl => { const a = slotAgg(td, sl, c); if(!a) return "";
     const vv = verdict(a.score);
     return `<div class="sl k-${vv.k}${a.past?" past":""}"><div class="h">${sl.label}<span class="tag"><span class="vd"></span>${vv.t}</span></div>
@@ -358,12 +371,22 @@ let theme = store.get("mm_theme"); if(!THEMES.includes(theme)) theme = "auto";
 function applyTheme(){
   if(theme === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme;
   $("themeBtn").innerHTML = THEME_IC[theme];
-  $("themeBtn").setAttribute("aria-label", "Tema: "+THEME_LBL[theme]+". Canvia el tema");
+  $("themeBtn").setAttribute("aria-label", "Opcions de visualització (tema "+THEME_LBL[theme]+")");
   const dark = theme === "dark" || (theme === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
   $("themeColor").setAttribute("content", dark ? "#060c19" : "#e9eef5");
   window.dispatchEvent(new Event("mm-theme"));
 }
-$("themeBtn").addEventListener("click", () => { theme = THEMES[(THEMES.indexOf(theme)+1)%3]; store.set("mm_theme", theme); applyTheme(); });
+let textSize = store.get("mm_size") === "big" ? "big" : "normal";
+function applySize(){ if(textSize === "big") document.documentElement.dataset.size = "big"; else delete document.documentElement.dataset.size; }
+function renderViewPanel(){
+  document.querySelectorAll("#themeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.theme === theme)));
+  document.querySelectorAll("#sizeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.size === textSize)));
+}
+$("themeBtn").addEventListener("click", () => { const p = $("viewPanel"); p.hidden = !p.hidden; $("themeBtn").setAttribute("aria-expanded", String(!p.hidden)); renderViewPanel(); });
+$("themeSeg").addEventListener("click", e => { const b = e.target.closest("button[data-theme]"); if(!b) return; theme = b.dataset.theme; store.set("mm_theme", theme); applyTheme(); renderViewPanel(); });
+$("sizeSeg").addEventListener("click", e => { const b = e.target.closest("button[data-size]"); if(!b) return; textSize = b.dataset.size; store.set("mm_size", textSize); applySize(); renderViewPanel(); });
+$("closeView").addEventListener("click", () => { $("viewPanel").hidden = true; $("themeBtn").setAttribute("aria-expanded","false"); });
+applySize();
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", applyTheme);
 applyTheme();
 

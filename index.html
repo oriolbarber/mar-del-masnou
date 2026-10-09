@@ -14,13 +14,14 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="robots" content="noindex, nofollow">
 <script>
+  try{ if(JSON.parse(localStorage.getItem("mm_size")) === "big") document.documentElement.dataset.size = "big"; }catch(e){}
   // Tema abans de pintar: auto (sistema) / dark / light
   try{ const t = localStorage.getItem("mm_theme"); if(t === "dark" || t === "light") document.documentElement.dataset.theme = t; }catch(e){}
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=10">
+<link rel="stylesheet" href="app.css?v=12">
 </head>
 <body>
 <div class="app">
@@ -29,11 +30,21 @@
   <img src="icons/icon-192.png" alt="Club Ocata Vent" width="36" height="36">
   <div class="t"><b>Ocata Vent</b><span id="clock">El Masnou</span></div>
   <div class="seg act-seg" role="group" aria-label="Embarcació" id="actSeg"></div>
-  <button class="ib" id="themeBtn" type="button" aria-label="Tema: automàtic"></button>
+  <button class="ib" id="themeBtn" type="button" aria-label="Opcions de visualització" aria-expanded="false" aria-controls="viewPanel"></button>
   <button class="ib" id="refresh" type="button" aria-label="Actualitza les dades">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
   </button>
 </header>
+<div class="card view-panel" id="viewPanel" hidden>
+  <div class="vp-row"><span class="lbl">Tema</span>
+    <div class="seg" role="group" aria-label="Tema" id="themeSeg">
+      <button type="button" data-theme="auto">Automàtic</button><button type="button" data-theme="dark">Fosc</button><button type="button" data-theme="light">Clar</button></div></div>
+  <div class="vp-row"><span class="lbl">Mida del text</span>
+    <div class="seg" role="group" aria-label="Mida del text" id="sizeSeg">
+      <button type="button" data-size="normal">Normal</button><button type="button" data-size="big"><span style="font-size:1.25em">A</span>&nbsp;Gran</button></div></div>
+  <p class="note">«Gran» fa les lletres i els números molt més grans i treu els indicadors gràfics de la primera pantalla.</p>
+  <button class="btn" type="button" id="closeView">Fet</button>
+</div>
 
 <main>
 <!-- ============ PREVISIÓ ============ -->
@@ -52,6 +63,7 @@
         <div class="rose" id="rose"></div>
       </div>
       <div class="flags" id="flags"></div>
+      <div class="big-now" id="bigNow"></div>
     </article>
     <div class="stats" id="stats"></div>
     <article class="card" id="outlook"></article>
@@ -201,8 +213,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=10"></script>
-<script src="trip.js?v=10"></script>
-<script src="maps.js?v=10"></script>
+<script src="app.js?v=12"></script>
+<script src="trip.js?v=12"></script>
+<script src="maps.js?v=12"></script>
 </body>
 </html>
