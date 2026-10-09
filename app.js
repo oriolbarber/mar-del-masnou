@@ -266,7 +266,7 @@ function hourTable(date, h0, h1){
 const BOAT_IC = {
   pati: `<path d="M17 3.5L18.5 16.5"/><path d="M17 4L8 15L18 15"/><path d="M3 17.5L21.5 17.5L21.5 19L4.5 19Z"/><path d="M2 19L20.5 19"/>`,
   windsurf: `<path d="M3 20.5c4 1.2 13 1.2 18-1.5"/><path d="M8.5 19.5 13 2.5"/><path d="M13 2.5c4.5 3 6.5 8 5.5 13L9.6 18"/><path d="M10.6 11.5l7.6 1.2"/>`,
-  hobie: `<path d="M15 3L14.5 16.5"/><path d="M15.5 3.5L20.5 15.5L15.5 15.5"/><path d="M14.5 3.5L6.5 15.5L13.5 15.5"/><path d="M3 17.5L21 17.5L20 19.5L5 19.5Z"/><path d="M3.5 20L18 20"/>`
+  hobie: `<path d="M16 1L15.5 16.5"/><path d="M16.5 5.5L20 15L16.5 14.5"/><path d="M16 1.5L7 14L14.5 14.5"/><path d="M3 17.5L21 17.5L20 19.5L5 19.5Z"/><path d="M3.5 20L18 20"/>`
 };
 const boatIcon = (k, z) => `<svg width="${z||22}" height="${z||22}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${BOAT_IC[k]}</svg>`;
 function renderSeg(){
