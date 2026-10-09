@@ -84,7 +84,7 @@ function renderWindMap(){
   const c = crit[act];
   // capçalera de dies
   const days = []; keys.forEach(x => { const last = days[days.length - 1]; if(last && last.date === x.date) last.n++; else days.push({date: x.date, n: 1}); });
-  const dayRow = days.map((d, i) => { const dd = new Date(d.date + "T12:00:00"); return `<th colspan="${d.n}" class="wm-day">${i === 0 ? "Avui" : DAYS_L[dd.getDay()]} ${dd.getDate()}</th>`; }).join("");
+  const dayRow = days.map((d, i) => { const dd = new Date(d.date + "T12:00:00"); return `<th colspan="${d.n}" class="wm-day"><span class="wm-dayl">${i === 0 ? "Avui" : DAYS_L[dd.getDay()]} ${dd.getDate()}</span></th>`; }).join("");
   const cols = keys.map(x => ({...x, p: hourAt(x.date, x.h) || DATA.hours[x.k]}));
   const cell = (x, inner, style, cls) => `<td data-k="${x.k}"${style ? ` style="${style}"` : ""} class="${(x.p.obs ? "obs " : "") + (cls || "")}">${inner}</td>`;
   const row = (label, fn) => `<tr><th class="wm-lbl">${label}</th>${cols.map(fn).join("")}</tr>`;

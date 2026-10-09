@@ -5,7 +5,7 @@
   --bg:#e9eef5; --surface:#ffffff; --surface-2:#f3f6fa; --line:#cbd5e2; --grid:#e1e7ef;
   --ink:#0a1322; --muted:#4a5a72; --accent:#0068b8; --accent-2:#c26a00; --sea:#0a63c9; --wave-l:#0a5bc0; --on-accent:#ffffff;
   --ideal:#007a45; --marg:#d05a00; --no:#c3162a; --bo:var(--ideal); --poc:var(--no);
-  --ideal-t:#d4f2e2; --marg-t:#ffe4cf; --no-t:#fbdadd; --bo-t:var(--ideal-t); --poc-t:var(--no-t); --on-k:#ffffff;
+  --ideal-t:#d4f2e2; --marg-t:#ffe4cf; --no-t:#fbdadd; --bo-t:var(--ideal-t); --poc-t:var(--no-t); --on-k:#ffffff; --sel:#1e3a8a;
   --shadow:0 1px 2px #0a132214, 0 4px 14px #0a13220d; --glow:none;
   --f-head:"Rajdhani","Arial Narrow",sans-serif;
   --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -17,14 +17,14 @@
   --bg:#060c19; --surface:#0d1729; --surface-2:#122039; --line:#1f3050; --grid:#18273f;
   --ink:#e9f1ff; --muted:#8fa4c6; --accent:#3cd0ff; --accent-2:#ffb547; --sea:#4ea6ff; --wave-l:#2f7fe0; --on-accent:#03121c;
   --ideal:#34e39a; --marg:#ff9a3c; --no:#ff6476; --bo:var(--ideal); --poc:var(--no);
-  --ideal-t:#0f3a2c; --marg-t:#422409; --no-t:#41161f; --bo-t:var(--ideal-t); --poc-t:var(--no-t); --on-k:#0b1220;
+  --ideal-t:#0f3a2c; --marg-t:#422409; --no-t:#41161f; --bo-t:var(--ideal-t); --poc-t:var(--no-t); --on-k:#0b1220; --sel:#3d6ee0;
   --shadow:0 0 0 1px #ffffff05, 0 10px 30px #0006; --glow:drop-shadow(0 0 6px currentColor);
   color-scheme:dark;}}
 :root[data-theme="dark"]{
   --bg:#060c19; --surface:#0d1729; --surface-2:#122039; --line:#1f3050; --grid:#18273f;
   --ink:#e9f1ff; --muted:#8fa4c6; --accent:#3cd0ff; --accent-2:#ffb547; --sea:#4ea6ff; --wave-l:#2f7fe0; --on-accent:#03121c;
   --ideal:#34e39a; --marg:#ff9a3c; --no:#ff6476; --bo:var(--ideal); --poc:var(--no);
-  --ideal-t:#0f3a2c; --marg-t:#422409; --no-t:#41161f; --bo-t:var(--ideal-t); --poc-t:var(--no-t); --on-k:#0b1220;
+  --ideal-t:#0f3a2c; --marg-t:#422409; --no-t:#41161f; --bo-t:var(--ideal-t); --poc-t:var(--no-t); --on-k:#0b1220; --sel:#3d6ee0;
   --shadow:0 0 0 1px #ffffff05, 0 10px 30px #0006; --glow:drop-shadow(0 0 6px currentColor);
   color-scheme:dark;}
 
@@ -396,8 +396,8 @@ td small.obs{display:block;font-family:var(--f-body);font-size:.68rem;font-weigh
 #wmTable td.soft-t{color:var(--muted)}
 #wmTable .obs{box-shadow:inset 0 2px 0 var(--accent-2)}
 #wmTable th.obs{color:var(--accent-2)}
-#wmTable .sel{outline:2px solid var(--ink);outline-offset:-2px;position:relative;z-index:1}
-#wmTable th.sel{background:var(--ink);color:var(--bg)}
+#wmTable .sel{outline:2px solid var(--sel);outline-offset:-2px;position:relative;z-index:1}
+#wmTable th.sel{background:var(--sel);color:#fff}
 #wmTable td svg{display:block;margin:0 auto;color:var(--ink)}
 #wmTable .vd{display:inline-block}
 :root[data-size="big"] #wmTable{font-size:1.05rem}
@@ -439,8 +439,8 @@ svg.hc{touch-action:pan-y;cursor:crosshair;-webkit-user-select:none;user-select:
 .hc-read small{font-weight:600}
 .hc-read small.obs{color:var(--accent-2)}
 tr[data-k]{cursor:pointer}
-tr[data-k].sel td{background:color-mix(in srgb, var(--ink) 10%, transparent)}
-tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--ink)}
+tr[data-k].sel td{background:color-mix(in srgb, var(--sel) 14%, var(--surface))}
+tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--sel)}
 .wm-now .tag{font-size:.74rem}
 .lv-legend{margin-top:2px}
 :root[data-size="big"] #outlook{display:block}
@@ -457,3 +457,11 @@ tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--ink)}
 #mapSeg button small{font-size:.68rem;font-weight:600;opacity:.75;text-transform:none;letter-spacing:0}
 .maps-seg{align-self:stretch}
 #mapSeg button{flex:1 1 0}
+/* el nom del dia acompanya la taula mentre llisca */
+#wmTable th.wm-day{padding-left:0}
+#wmTable .wm-dayl{position:sticky;left:73px;display:inline-block;padding:0 8px;background:var(--surface)}
+/* taula d'hores: la columna de l'hora queda fixa en lliscar */
+.tbl{position:relative}
+.tbl th:first-child,.tbl td:first-child{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:1px 0 0 var(--line)}
+.tbl tr.now-row td:first-child{background:var(--surface-2)}
+.tbl tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--sel),1px 0 0 var(--line)}
