@@ -4,538 +4,141 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Mar del Masnou</title>
-<meta name="description" content="Idoneïtat per navegar al Masnou: vent, onades i temperatura de l'aigua.">
-<meta name="theme-color" content="#ffffff">
+<meta name="description" content="Idoneïtat per navegar al Masnou: vent, onades, temperatura de l'aigua i registre de sortides amb GPS.">
+<meta name="theme-color" content="#e9eef5" id="themeColor">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mar Masnou">
 <meta name="mobile-web-app-capable" content="yes">
+<script>
+  // Tema abans de pintar: auto (sistema) / dark / light
+  try{ const t = localStorage.getItem("mm_theme"); if(t === "dark" || t === "light") document.documentElement.dataset.theme = t; }catch(e){}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600&display=swap">
-<style>
-/* Layout: 1a pantalla = tauler d'instruments (veredicte, rosa dels vents, xifres clau, avui) ajustat a l'alçada de pantalla;
-   a sota, seccions desplegables: hores d'avui, 7 dies, criteris. Tema clar únic d'alt contrast per llegir-lo al sol. */
-:root{
-  --bg:#f4f6f7; --surface:#ffffff; --ink:#05080a; --muted:#37444b; --line:#9eabb2; --grid:#d9e0e3;
-  --accent:#0038c7; --sea:#0a63c9;
-  --ideal:#00703c; --ideal-t:#d3f1e0;
-  --bo:#0b52c2;    --bo-t:#dae6fa;
-  --marg:#e0a100; --marg-ink:#1c1400; --marg-t:#fff0c4;
-  --no:#c1121f;    --no-t:#fbd6d9;
-  --f-cond:"IBM Plex Sans Condensed","Arial Narrow",sans-serif;
-  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
-  color-scheme:light;
-}
-*{box-sizing:border-box}
-html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.4;padding:0 12px;padding-block:8px 32px}
-.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
-h2{font-family:var(--f-cond);font-weight:700;font-size:1.2rem;margin:0;text-transform:uppercase;letter-spacing:.04em}
-.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
-.lbl{font-family:var(--f-cond);font-size:.74rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:700}
-.muted{color:var(--muted)}
-button{font:inherit}
-button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-
-/* ----- tauler (1a pantalla) ----- */
-.hero{min-height:calc(100dvh - 40px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
-.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.bar img{width:34px;height:34px;border-radius:6px;flex:none}
-.bar .name{font-family:var(--f-cond);font-weight:700;font-size:1.15rem;text-transform:uppercase;letter-spacing:.03em;margin-right:auto}
-.seg{display:inline-flex;border:2px solid var(--ink);border-radius:8px;overflow:hidden;background:var(--surface)}
-.seg button{border:0;background:transparent;color:var(--ink);font-family:var(--f-cond);font-weight:700;font-size:.9rem;padding:0 10px;min-height:40px;cursor:pointer;text-transform:uppercase;letter-spacing:.03em}
-.seg button+button{border-left:2px solid var(--ink)}
-.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
-.icon-btn{border:2px solid var(--ink);background:var(--surface);color:var(--ink);border-radius:8px;width:44px;height:44px;display:inline-grid;place-items:center;cursor:pointer;flex:none}
-.icon-btn[aria-busy="true"] svg{animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.txt-btn{border:2px solid var(--ink);background:var(--surface);color:var(--ink);border-radius:8px;min-height:40px;padding:0 12px;font-family:var(--f-cond);font-weight:700;text-transform:uppercase;cursor:pointer}
-
-.verdict{border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;color:#fff}
-.verdict .big{font-family:var(--f-cond);font-weight:700;font-size:2.4rem;line-height:1;text-transform:uppercase;letter-spacing:.02em}
-.verdict .score{font-family:var(--f-mono);font-weight:600;font-size:1rem;opacity:.95}
-.verdict .flags{font-weight:600;font-size:.88rem;width:100%}
-.verdict .src{font-size:.8rem;margin-left:auto;display:flex;align-items:center;gap:6px;font-weight:600}
-.v-ideal{background:var(--ideal)} .v-bo{background:var(--bo)} .v-marg{background:var(--marg);color:var(--marg-ink)} .v-no{background:var(--no)}
-.live-dot{width:9px;height:9px;border-radius:50%;background:currentColor;display:inline-block}
-@media (prefers-reduced-motion:no-preference){.live-dot.on{animation:pulse 2s infinite}@keyframes pulse{50%{opacity:.25}}}
-
-.instr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch}
-.rose{background:var(--surface);border:2px solid var(--ink);border-radius:10px;padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0}
-.rose svg{width:100%;max-width:300px;height:auto;display:block}
-.rose .cap{font-size:.74rem;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;justify-content:center;font-weight:600}
-.rose .cap span{display:inline-flex;align-items:center;gap:4px}
-.nums{display:grid;grid-template-columns:1fr;gap:8px;min-width:0}
-.num{background:var(--surface);border:2px solid var(--ink);border-radius:10px;padding:6px 10px;display:flex;flex-direction:column;justify-content:center;min-width:0}
-.num .v{font-family:var(--f-mono);font-weight:700;font-size:1.9rem;line-height:1.05;letter-spacing:-.02em}
-.num .v small{font-size:.85rem;font-weight:600;color:var(--muted);margin-left:3px;letter-spacing:0}
-.num .x{font-size:.78rem;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.row3 .num .v{font-size:1.45rem}
-
-.today{background:var(--surface);border:2px solid var(--ink);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
-.today-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-.sl{border-radius:7px;padding:5px 7px;display:flex;flex-direction:column;gap:1px;min-width:0;color:var(--ink)}
-.sl .h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:2px 4px;font-family:var(--f-cond);font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em}
-.sl .w{font-family:var(--f-mono);font-weight:700;font-size:1.1rem;display:flex;align-items:center;gap:3px;white-space:nowrap}
-.sl .w small{font-size:.75rem;font-weight:600;color:var(--muted)}
-.sl .o{font-size:.76rem;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sl.past{opacity:.45}
-.t-ideal{background:var(--ideal-t)} .t-bo{background:var(--bo-t)} .t-marg{background:var(--marg-t)} .t-no{background:var(--no-t)}
-.tag{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-cond);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;border-radius:4px;color:#fff;white-space:nowrap}
-.tag.k-ideal{background:var(--ideal)} .tag.k-bo{background:var(--bo)} .tag.k-marg{background:var(--marg);color:var(--marg-ink)} .tag.k-no{background:var(--no)}
-.spark svg{display:block;width:100%;height:auto}
-.more{font-size:.8rem;color:var(--muted);text-align:center;font-weight:600}
-
-.msg{font-size:.88rem;font-weight:600;border-radius:8px;padding:8px 12px;background:var(--surface);border:2px solid var(--line)}
-.msg.err{border-color:var(--no);color:var(--no)}
-
-/* ----- seccions desplegables ----- */
-details.sec{background:var(--surface);border:2px solid var(--ink);border-radius:10px}
-details.sec>summary{list-style:none;cursor:pointer;min-height:52px;padding:8px 14px;display:flex;align-items:center;gap:10px}
-details.sec>summary::-webkit-details-marker{display:none}
-details.sec>summary .chev{margin-left:auto;transition:transform .15s;flex:none}
-details.sec[open]>summary .chev{transform:rotate(180deg)}
-details.sec>summary .peek{font-size:.82rem;color:var(--muted);font-weight:600}
-.sec-body{padding:0 14px 14px;display:flex;flex-direction:column;gap:12px}
-
-.chart{overflow-x:auto}
-.chart svg{display:block;width:100%;min-width:560px;height:auto}
-.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.78rem;color:var(--muted);font-weight:600}
-.legend span{display:inline-flex;align-items:center;gap:5px}
-.sw{width:14px;height:10px;border-radius:2px;display:inline-block}
-.tbl{overflow-x:auto}
-table{border-collapse:collapse;font-size:.85rem;min-width:100%}
-th,td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--grid);white-space:nowrap;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
-th{font-family:var(--f-cond);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:2px solid var(--ink)}
-th:first-child,td:first-child,th.l,td.l{text-align:left}
-tr.now-row td{background:#fff6cc}
-td.warn{font-family:var(--f-body);font-size:.78rem;font-weight:600;color:var(--no);text-align:left}
-
-/* setmana */
-.week{display:flex;flex-direction:column;gap:6px}
-.wrow{display:grid;grid-template-columns:96px repeat(3,minmax(0,1fr));gap:6px;border:0;background:none;padding:0;text-align:left;cursor:pointer;color:inherit}
-.wrow .d{border:2px solid var(--line);border-radius:7px;padding:5px 8px;display:flex;flex-direction:column;justify-content:center;background:var(--surface)}
-.wrow .d b{font-family:var(--f-cond);font-size:1rem;text-transform:uppercase}
-.wrow .d span{font-size:.75rem;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:4px}
-.wrow[aria-expanded="true"] .d{border-color:var(--ink);background:var(--ink);color:#fff}
-.wrow[aria-expanded="true"] .d span{color:#e6ecef}
-.wk-head{display:grid;grid-template-columns:96px repeat(3,minmax(0,1fr));gap:6px}
-.wk-head div{font-family:var(--f-cond);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;padding-left:4px}
-.wdetail{border:2px solid var(--ink);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:10px}
-.wdetail h3{margin:0;font-family:var(--f-cond);font-size:1.05rem;text-transform:uppercase}
-
-.crit{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-.crit label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);font-weight:600}
-.crit input{font:600 1.05rem var(--f-mono);padding:6px 10px;border:2px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);min-height:44px;width:100%}
-.note{font-size:.85rem;color:var(--muted);max-width:72ch;margin:0}
-footer{font-size:.78rem;color:var(--muted);display:flex;flex-direction:column;gap:3px;padding:0 2px}
-footer a,.note a{color:var(--accent)}
-
-@media (min-width:860px){
-  .hero{min-height:auto}
-  .dash{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:12px;align-items:start}
-  .dash .left{display:flex;flex-direction:column;gap:10px}
-  .num .v{font-size:2.2rem}
-}
-@media (max-width:859px){ .dash,.dash .left{display:flex;flex-direction:column;gap:10px} }
-@media (max-width:640px){
-  .wk-head{display:none}
-  .wrow{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .wrow .d{grid-column:1/-1;flex-direction:row;justify-content:space-between;align-items:center}
-  .verdict .big{font-size:2rem}
-  .num .v{font-size:1.6rem}
-  .row3 .num .v{font-size:1.25rem}
-  .seg button{padding:0 8px;font-size:.82rem}
-}
-@media (max-width:370px){ .bar .name{display:none} }
-</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="app.css">
 </head>
 <body>
-<div class="wrap">
+<div class="app">
 
-<section class="hero" aria-label="Condicions ara">
-  <div class="bar">
-    <img src="icons/icon-192.png" alt="Club Ocata Vent" width="34" height="34">
-    <span class="name">Mar del Masnou</span>
-    <div class="seg" role="group" aria-label="Embarcació" id="actSeg"></div>
-    <button class="icon-btn" id="refresh" type="button" aria-label="Actualitza les dades">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
-    </button>
-  </div>
+<header class="top">
+  <img src="icons/icon-192.png" alt="Club Ocata Vent" width="36" height="36">
+  <div class="t"><b>Mar del Masnou</b><span id="clock">Club Ocata Vent</span></div>
+  <button class="ib" id="themeBtn" type="button" aria-label="Tema: automàtic"></button>
+  <button class="ib" id="refresh" type="button" aria-label="Actualitza les dades">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+  </button>
+</header>
 
-  <button class="txt-btn" id="install" type="button" hidden>Instal·la l'app al mòbil</button>
+<main>
+<!-- ============ PREVISIÓ ============ -->
+<section class="view" id="view-fc">
   <div id="msg" class="msg" role="status">Carregant la previsió…</div>
+  <button class="btn" id="install" type="button" hidden>Instal·la l'app al mòbil</button>
 
-  <div class="dash" id="dash" hidden>
-    <div class="left">
-      <div class="verdict" id="verdict"></div>
-      <div class="instr">
-        <div class="rose" id="rose"></div>
-        <div class="nums" id="nums"></div>
+  <div class="hero" id="hero" hidden>
+    <article class="card now">
+      <div class="card-h">
+        <div class="seg" role="group" aria-label="Embarcació" id="actSeg"></div>
+        <span class="src" id="src"></span>
       </div>
-      <div class="row3" id="row3"></div>
-    </div>
-    <div class="today" id="today"></div>
+      <div class="now-grid">
+        <div class="gauge" id="gauge"></div>
+        <div class="rose" id="rose"></div>
+      </div>
+      <div class="flags" id="flags"></div>
+    </article>
+    <div class="stats" id="stats"></div>
+    <article class="card" id="outlook"></article>
   </div>
-  <div class="more" aria-hidden="true">Hores d'avui i previsió de 7 dies a sota ↓</div>
+
+  <button class="cta" type="button" data-go="trip" id="ctaTrip">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v14"/><path d="M12 4l7 11h-7"/><path d="M3 19c3 2 6 2 9 0s6-2 9 0"/></svg>
+    <span id="ctaLabel">Inicia una sortida</span>
+  </button>
+
+  <details class="card sec" id="secHours">
+    <summary><h2>Hores d'avui</h2><span class="peek" id="peekHours"></span>
+      <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <div class="sec-body" id="hoursBody"></div>
+  </details>
+
+  <details class="card sec" id="secWeek">
+    <summary><h2>7 dies</h2><span class="peek" id="peekWeek"></span>
+      <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <div class="sec-body"><div class="wk" id="week"></div></div>
+  </details>
+
+  <details class="card sec" id="secCrit">
+    <summary><h2>Criteris</h2><span class="peek" id="peekCrit"></span>
+      <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <div class="sec-body">
+      <p class="note" id="critIntro"></p>
+      <div class="crit" id="crit"></div>
+      <div><button class="btn" type="button" id="resetCrit">Restaura valors</button></div>
+      <p class="note">Cada franja es puntua amb el vent mitjà, la ratxa màxima i l'onada màxima. Es penalitza el <b>terral</b> (mestral, tramuntana o ponent: bufa de terra cap a mar i allunya l'embarcació de la platja), les ratxes molt més fortes que el vent mitjà, la pluja probable i les tempestes. A la rosa dels vents, el sector vermell és terral i el verd, vent de mar.</p>
+    </div>
+  </details>
+
+  <footer>
+    <div>Previsió: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (AROME/ECMWF; onatge MFWAM/ECMWF). Vent mesurat: <a href="https://www.meteoelmasnou.cat/" target="_blank" rel="noopener">estació meteoelmasnou.cat</a>. Vent en nusos, onades en metres.</div>
+    <div>Contrasta-ho: <a href="https://www.meteo.cat/" target="_blank" rel="noopener">Meteocat</a> · <a href="https://portus.puertos.es/" target="_blank" rel="noopener">Boia de Barcelona</a> · <a href="https://www.windguru.cz/" target="_blank" rel="noopener">Windguru</a></div>
+    <div id="updated"></div>
+  </footer>
 </section>
 
-<details class="sec" id="secHours">
-  <summary><h2>Hores d'avui</h2><span class="peek" id="peekHours"></span>
-    <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
-  <div class="sec-body" id="hoursBody"></div>
-</details>
-
-<details class="sec" id="secWeek">
-  <summary><h2>Previsió 7 dies</h2><span class="peek" id="peekWeek"></span>
-    <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
-  <div class="sec-body"><div class="week" id="week"></div></div>
-</details>
-
-<details class="sec" id="secCrit">
-  <summary><h2>Criteris</h2><span class="peek" id="peekCrit"></span>
-    <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
-  <div class="sec-body">
-    <p class="note" id="critIntro"></p>
-    <div class="crit" id="crit"></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="txt-btn" type="button" id="resetCrit">Restaura valors</button></div>
-    <p class="note">Cada franja es puntua amb el vent mitjà, la ratxa màxima i l'onada màxima. Es penalitza el <b>terral</b> (mestral, tramuntana o ponent: bufa de terra cap a mar i allunya l'embarcació de la platja), les ratxes molt més fortes que el vent mitjà, la pluja probable i les tempestes. A la rosa dels vents, el sector vermell és terral i el verd, vent de mar.</p>
+<!-- ============ SORTIDA ============ -->
+<section class="view" id="view-trip" hidden>
+  <div id="tripIdle" class="view">
+    <article class="card">
+      <h2 style="font-size:1.4rem;text-transform:uppercase">Nova sortida</h2>
+      <p class="note" style="margin-top:6px">Registra la ruta amb el GPS del mòbil i el vent de l'estació del Masnou cada minut. En acabar tindràs un resum amb distància, velocitats, rumbs respecte al vent i el mapa de la ruta.</p>
+    </article>
+    <div class="warnbox" id="gpsNote">Mantén l'app oberta i la pantalla encesa durant la sortida: amb la pantalla apagada, el navegador pot aturar el GPS. L'app demana que la pantalla no s'apagui sola.</div>
+    <label class="card" for="tripName" style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Nom de la sortida (opcional)</span>
+      <input class="field" id="tripName" type="text" placeholder="P. ex. Regata de dissabte" autocomplete="off" style="font-family:var(--f-body)"></label>
+    <button class="cta" type="button" id="startTrip">Comença la sortida</button>
+    <div class="msg err" id="tripErr" hidden></div>
   </div>
-</details>
 
-<footer>
-  <div>Previsió: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (AROME/ECMWF; onatge MFWAM/ECMWF). Vent mesurat: <a href="https://www.meteoelmasnou.cat/" target="_blank" rel="noopener">estació meteoelmasnou.cat</a>. Vent en nusos, onades en metres.</div>
-  <div>Contrasta-ho: <a href="https://www.meteo.cat/" target="_blank" rel="noopener">Meteocat</a> · <a href="https://portus.puertos.es/" target="_blank" rel="noopener">Boia de Barcelona</a> · <a href="https://www.windguru.cz/" target="_blank" rel="noopener">Windguru</a></div>
-  <div id="updated"></div>
-</footer>
+  <div id="tripLive" class="view" hidden>
+    <article class="card">
+      <div class="live-top">
+        <div><span class="src live"><span class="dot"></span>Gravant · <span id="liveAct"></span></span><div class="timer" id="liveTimer">00:00:00</div></div>
+        <span class="src" id="liveGps">Esperant el GPS…</span>
+      </div>
+    </article>
+    <div class="big-stats" id="liveStats"></div>
+    <div class="map" id="liveMap"></div>
+    <button class="cta stop" type="button" id="stopTrip">Atura i desa</button>
+    <button class="btn danger" type="button" id="discardTrip">Descarta la sortida</button>
+  </div>
+</section>
+
+<!-- ============ HISTORIAL ============ -->
+<section class="view" id="view-log" hidden>
+  <div id="logList" class="view"></div>
+  <div id="logDetail" class="view" hidden></div>
+</section>
+</main>
+
+<nav class="tabs" aria-label="Seccions">
+  <div class="in">
+    <button type="button" data-go="fc" aria-current="page">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 12h15a3 3 0 1 1-3 3"/><path d="M3 16h7"/></svg>Previsió</button>
+    <button type="button" data-go="trip">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v14"/><path d="M12 4l7 11h-7"/><path d="M3 19c3 2 6 2 9 0s6-2 9 0"/></svg>Sortida<span class="rec" id="recDot" hidden></span></button>
+    <button type="button" data-go="log">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg>Historial</button>
+  </div>
+</nav>
 </div>
 
-<script>
-"use strict";
-const LOC = {lat:41.4766, lon:2.3185, mlat:41.465, mlon:2.33};
-const COAST = 135; // la platja mira al SE
-const DEFAULTS = {
-  pati:     {name:"Patí català", short:"Patí",     min:5,  iMin:8,  iMax:16, max:20, gust:24, wOk:0.6, wMax:1.2},
-  windsurf: {name:"Windsurf",    short:"Windsurf", min:10, iMin:14, iMax:24, max:30, gust:34, wOk:1.2, wMax:2.2},
-  hobie:    {name:"Hobie Cat",   short:"Hobie",    min:6,  iMin:10, iMax:18, max:22, gust:26, wOk:0.8, wMax:1.5}
-};
-const SLOTS = [
-  {k:"mati",   label:"Matí",   range:"9–12 h",  hours:[9,10,11]},
-  {k:"migdia", label:"Migdia", range:"12–15 h", hours:[12,13,14]},
-  {k:"tarda",  label:"Tarda",  range:"15–19 h", hours:[15,16,17,18]}
-];
-const VERD = [{min:80,k:"ideal",t:"Ideal"},{min:60,k:"bo",t:"Bo"},{min:35,k:"marg",t:"Marginal"},{min:-1,k:"no",t:"No apte"}];
-const WINDS = ["Tramuntana","Gregal","Llevant","Xaloc","Migjorn","Garbí","Ponent","Mestral"];
-const WABBR = ["TRA","GRE","LLE","XAL","MIG","GAR","PON","MES"];
-const DAYS_L = ["Diumenge","Dilluns","Dimarts","Dimecres","Dijous","Divendres","Dissabte"];
-const MONTHS = ["gen","feb","març","abr","maig","juny","jul","ag","set","oct","nov","des"];
-const KMH = 0.539957;
-
-const store = {
-  get(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } },
-  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
-};
-let act = store.get("mm_act"); if(!DEFAULTS[act]) act = "pati";
-let crit = JSON.parse(JSON.stringify(DEFAULTS));
-const savedCrit = store.get("mm_crit"); if(savedCrit) for(const k in crit) if(savedCrit[k]) Object.assign(crit[k], savedCrit[k]);
-let DATA = null, ST = null, openDay = null;
-
-const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const r1 = v => v==null||isNaN(v) ? "–" : (Math.round(v*10)/10).toLocaleString("ca");
-const r0 = v => v==null||isNaN(v) ? "–" : String(Math.round(v));
-const norm = d => ((d%360)+360)%360;
-const windName = d => d==null ? "–" : WINDS[Math.round(norm(d)/45)%8];
-const isOffshore = d => { if(d==null) return false; const x = norm(d); return x>=255 || x<=15; };
-const isOnshore = d => { if(d==null) return false; const x = norm(d); return x>=75 && x<=195; };
-function arrow(deg, size){
-  if(deg==null) return "";
-  const s = size||16;
-  return `<svg width="${s}" height="${s}" viewBox="0 0 20 20" aria-hidden="true" style="flex:none"><g transform="rotate(${norm(deg+180)} 10 10)"><path d="M10 1.5 L15.5 16 L10 12.5 L4.5 16 Z" fill="currentColor"/></g></svg>`;
-}
-function wxIcon(code, size){
-  const z = size||16, s = `width="${z}" height="${z}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"`;
-  if(code==null) return "";
-  if(code>=95) return `<svg ${s} aria-label="Tempesta"><path d="M7 15a4 4 0 1 1 1-7.9A5 5 0 0 1 18 9a3 3 0 0 1 0 6"/><path d="M12 13l-2 4h3l-2 4"/></svg>`;
-  if(code>=51) return `<svg ${s} aria-label="Pluja"><path d="M7 14a4 4 0 1 1 1-7.9A5 5 0 0 1 18 8a3 3 0 0 1 0 6H7"/><path d="M9 17l-1 3M13 17l-1 3M17 17l-1 3"/></svg>`;
-  if(code>=3) return `<svg ${s} aria-label="Ennuvolat"><path d="M7 18a4 4 0 1 1 1-7.9A5 5 0 0 1 18 12a3 3 0 0 1 0 6Z"/></svg>`;
-  if(code>=1) return `<svg ${s} aria-label="Sol i núvols"><circle cx="8" cy="8" r="3"/><path d="M8 2v1M2 8h1M3.8 3.8l.7.7M12.2 3.8l-.7.7"/><path d="M9 19a3.5 3.5 0 1 1 1-6.8A4.5 4.5 0 0 1 19 14a2.5 2.5 0 0 1 0 5Z"/></svg>`;
-  return `<svg ${s} aria-label="Sol"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
-}
-const suit = t => t==null ? "" : t>=22 ? "Lycra o banyador" : t>=19 ? "Neoprè curt 2–3 mm" : t>=16 ? "Neoprè 3/2 mm" : "Neoprè 4/3 + escarpins";
-
-/* ---------- puntuació ---------- */
-function windScore(w, c){
-  if(w==null) return null;
-  if(w < c.min) return Math.max(0, 30*(w/c.min));
-  if(w < c.iMin) return 40 + 60*(w-c.min)/(c.iMin-c.min);
-  if(w <= c.iMax) return 100;
-  if(w <= c.max) return 100 - 60*(w-c.iMax)/(c.max-c.iMax);
-  return Math.max(0, 25 - 6*(w-c.max));
-}
-function waveScore(h, c){
-  if(h==null) return 100;
-  if(h <= c.wOk) return 100;
-  if(h <= c.wMax) return 100 - 60*(h-c.wOk)/(c.wMax-c.wOk);
-  return Math.max(0, 25 - 60*(h-c.wMax));
-}
-function scoreHour(p, c){
-  const ws = windScore(p.wind, c);
-  if(ws==null) return {score:null, flags:[]};
-  let s = Math.min(ws, waveScore(p.wave, c));
-  const flags = [];
-  if(p.gust!=null && p.gust > c.gust){ s = Math.min(s, 25); flags.push("Ratxes fortes"); }
-  else if(p.gust!=null && p.wind!=null && p.gust - p.wind > 10){ s -= 15; flags.push("Racheig"); }
-  if(isOffshore(p.dir) && p.wind >= 6){ s = p.wind >= 10 ? Math.min(s-25, 40) : s-25; flags.push("Terral"); }
-  if(p.code!=null && p.code>=95){ s = 0; flags.push("Tempesta"); }
-  else if(p.pp!=null && p.pp>=60){ s -= 15; flags.push("Pluja"); }
-  return {score:Math.max(0, Math.min(100, Math.round(s))), flags};
-}
-const verdict = s => s==null ? {k:"no",t:"Sense dades"} : VERD.find(v => s >= v.min);
-
-/* ---------- dades ---------- */
-const URL_FC = `https://api.open-meteo.com/v1/forecast?latitude=${LOC.lat}&longitude=${LOC.lon}`+
-  "&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m"+
-  "&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m"+
-  "&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min"+
-  "&wind_speed_unit=kn&timezone=Europe%2FMadrid&forecast_days=7";
-const URL_MA = `https://marine-api.open-meteo.com/v1/marine?latitude=${LOC.mlat}&longitude=${LOC.mlon}`+
-  "&hourly=wave_height,wave_direction,wave_period,sea_surface_temperature"+
-  "&current=wave_height,wave_direction,wave_period,sea_surface_temperature"+
-  "&cell_selection=sea&timezone=Europe%2FMadrid&forecast_days=7";
-const URL_ST = "https://www.meteoelmasnou.cat/meteotemplateLive.txt";
-
-async function getJSON(u){ const r = await fetch(u, {cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }
-function build(fc, ma){
-  const hours = {}, H = fc.hourly;
-  H.time.forEach((t,i) => { hours[t] = {t, temp:H.temperature_2m[i], pp:H.precipitation_probability?.[i], code:H.weather_code[i],
-    wind:H.wind_speed_10m[i], dir:H.wind_direction_10m[i], gust:H.wind_gusts_10m[i], wave:null, wdir:null, per:null, sst:null}; });
-  if(ma && ma.hourly){ const M = ma.hourly;
-    M.time.forEach((t,i) => { const h = hours[t]; if(!h) return;
-      h.wave = M.wave_height?.[i] ?? null; h.wdir = M.wave_direction?.[i] ?? null; h.per = M.wave_period?.[i] ?? null; h.sst = M.sea_surface_temperature?.[i] ?? null; }); }
-  const c = fc.current || {}, mc = (ma && ma.current) || {};
-  return { hours, daily: fc.daily, fetchedAt: new Date().toISOString(), marineOk: !!(ma && ma.hourly),
-    now: {t:c.time, temp:c.temperature_2m, code:c.weather_code, wind:c.wind_speed_10m, dir:c.wind_direction_10m, gust:c.wind_gusts_10m,
-      wave:mc.wave_height ?? null, per:mc.wave_period ?? null, wdir:mc.wave_direction ?? null, sst:mc.sea_surface_temperature ?? null} };
-}
-function showMsg(text, err){ const m = $("msg"); m.hidden = !text; m.textContent = text || ""; m.className = "msg"+(err?" err":""); }
-async function load(){
-  $("refresh").setAttribute("aria-busy","true");
-  try{
-    const [fc, ma] = await Promise.all([getJSON(URL_FC), getJSON(URL_MA).catch(()=>null)]);
-    DATA = build(fc, ma); store.set("mm_cache", DATA);
-    showMsg(DATA.marineOk ? "" : "Sense dades d'onatge ara mateix: la valoració només té en compte el vent.");
-  }catch(e){
-    const cached = store.get("mm_cache");
-    if(cached){ DATA = cached; showMsg("Sense connexió. Mostro la previsió desada el "+stamp(cached.fetchedAt)+".", true); }
-    else { showMsg("No s'ha pogut carregar la previsió. Comprova la connexió i torna-ho a provar.", true); $("refresh").removeAttribute("aria-busy"); return; }
-  }
-  $("refresh").removeAttribute("aria-busy");
-  render();
-}
-async function loadStation(){
-  try{
-    const j = await getJSON(URL_ST+"?t="+Date.now());
-    ST = {wind:j.W*KMH, gust:j.G*KMH, dir:j.B, temp:j.T, hum:j.H, pres:j.P, at:(j.U||0)*1000};
-  }catch(e){}
-  if(DATA) renderHero();
-}
-const stFresh = () => ST && (Date.now() - ST.at) < 30*60*1000;
-const stamp = iso => { const d = new Date(iso); return d.toLocaleDateString("ca",{day:"numeric",month:"short"})+" a les "+d.toLocaleTimeString("ca",{hour:"2-digit",minute:"2-digit"}); };
-const hourKey = (date,h) => date+"T"+String(h).padStart(2,"0")+":00";
-const nowKey = () => (DATA.now.t || new Date().toISOString()).slice(0,13)+":00";
-const todayDate = () => DATA.daily.time.find(d => d === nowKey().slice(0,10)) || DATA.daily.time[0];
-
-function slotAgg(date, slot, c){
-  const hs = slot.hours.map(h => DATA.hours[hourKey(date,h)]).filter(Boolean);
-  if(!hs.length) return null;
-  const vals = f => hs.map(f).filter(x=>x!=null);
-  const avg = f => { const v = vals(f); return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null; };
-  const max = f => { const v = vals(f); return v.length ? Math.max(...v) : null; };
-  let sx=0, sy=0; hs.forEach(h => { if(h.dir!=null && h.wind!=null){ sx += Math.sin(h.dir*Math.PI/180)*h.wind; sy += Math.cos(h.dir*Math.PI/180)*h.wind; }});
-  const dir = (sx||sy) ? norm(Math.atan2(sx,sy)*180/Math.PI) : null;
-  const sc = hs.map(h => scoreHour(h,c));
-  const ss = sc.map(s=>s.score).filter(s=>s!=null);
-  let score = ss.length ? Math.round(Math.min(ss.reduce((a,b)=>a+b,0)/ss.length, Math.min(...ss)+25)) : null;
-  return {wind:avg(h=>h.wind), gust:max(h=>h.gust), dir, wave:max(h=>h.wave), per:avg(h=>h.per), temp:avg(h=>h.temp), sst:avg(h=>h.sst),
-    code:max(h=>h.code), score, flags:[...new Set(sc.flatMap(s=>s.flags))], past: hs[hs.length-1].t < nowKey()};
-}
-
-/* ---------- rosa dels vents ---------- */
-function roseSvg(o){
-  const R = 86, P = (a, r) => [Math.sin(a*Math.PI/180)*r, -Math.cos(a*Math.PI/180)*r];
-  const wedge = (a0, a1, r, fill) => { const [x0,y0] = P(a0,r), [x1,y1] = P(a1,r); const large = norm(a1-a0) > 180 ? 1 : 0;
-    return `<path d="M0 0 L${x0.toFixed(1)} ${y0.toFixed(1)} A${r} ${r} 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${fill}"/>`; };
-  let g = wedge(255, 375, R, "var(--no-t)") + wedge(75, 195, R, "var(--ideal-t)");
-  // línia de costa (NE–SW)
-  const [cx0,cy0] = P(COAST-90, R), [cx1,cy1] = P(COAST+90, R);
-  g += `<line x1="${cx0}" y1="${cy0}" x2="${cx1}" y2="${cy1}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
-  const [tx,ty] = P(COAST+180, 52), [sx,sy] = P(COAST, 52);
-  g += `<text x="${tx}" y="${ty}" font-size="9" font-weight="700" fill="var(--no)" text-anchor="middle" font-family="IBM Plex Sans Condensed,sans-serif" transform="rotate(-45 ${tx} ${ty})">TERRA</text>`;
-  g += `<text x="${sx}" y="${sy}" font-size="9" font-weight="700" fill="var(--ideal)" text-anchor="middle" font-family="IBM Plex Sans Condensed,sans-serif" transform="rotate(-45 ${sx} ${sy})">MAR</text>`;
-  g += `<circle r="${R}" fill="none" stroke="var(--ink)" stroke-width="2"/>`;
-  for(let a=0; a<360; a+=10){ const big = a%45===0; const [x0,y0] = P(a, R), [x1,y1] = P(a, R-(big?9:4));
-    g += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="var(--ink)" stroke-width="${big?2:1}"/>`; }
-  WABBR.forEach((t,i) => { const [x,y] = P(i*45, R+13); g += `<text x="${x}" y="${y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)" font-family="IBM Plex Sans Condensed,sans-serif">${t}</text>`; });
-  const arrowAt = (d, style) => { if(d==null) return "";
-    const [ox,oy] = P(d, R-2), [ix,iy] = P(d, 30);
-    const head = (() => { const [hx,hy] = P(d, 30), [lx,ly] = P(d-9, 46), [rx,ry] = P(d+9, 46); return `${hx},${hy} ${lx},${ly} ${rx},${ry}`; })();
-    return style === "fc"
-      ? `<line x1="${ox}" y1="${oy}" x2="${ix}" y2="${iy}" stroke="var(--muted)" stroke-width="3" stroke-dasharray="5 4"/><polygon points="${head}" fill="var(--surface)" stroke="var(--muted)" stroke-width="2"/>`
-      : `<line x1="${ox}" y1="${oy}" x2="${ix}" y2="${iy}" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><polygon points="${head}" fill="var(--ink)"/>`; };
-  if(o.fcDir!=null && o.live) g += arrowAt(o.fcDir, "fc");
-  g += arrowAt(o.dir, "main");
-  if(o.wdir!=null){ const [a,b] = P(o.wdir, R+2), [c1,d1] = P(o.wdir-5, R-11), [e,f] = P(o.wdir+5, R-11);
-    g += `<polygon points="${a},${b} ${c1},${d1} ${e},${f}" fill="var(--sea)"/>`; }
-  g += `<circle r="27" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>`;
-  g += `<text y="5" text-anchor="middle" font-size="22" font-weight="700" fill="var(--ink)" font-family="IBM Plex Mono,monospace">${r0(o.wind)}</text>`;
-  g += `<text y="18" text-anchor="middle" font-size="9" font-weight="600" fill="var(--muted)" font-family="IBM Plex Sans,sans-serif">kn</text>`;
-  return `<svg viewBox="-112 -112 224 224" role="img" aria-label="Rosa dels vents: vent de ${windName(o.dir)} a ${r0(o.wind)} nusos">${g}</svg>`;
-}
-
-/* ---------- gràfic horari ---------- */
-function hourChart(date, h0, h1, compact){
-  const c = crit[act], hrs = [];
-  for(let h=h0; h<=h1; h++){ const p = DATA.hours[hourKey(date,h)]; if(p) hrs.push({h, p, s:scoreHour(p,c)}); }
-  if(!hrs.length) return "";
-  const W = compact ? 360 : 760, Hh = compact ? 92 : 250, L = compact ? 22 : 40, R = compact ? 6 : 44, T = compact ? 6 : 24, B = compact ? 16 : 36;
-  const pw = W-L-R, ph = Hh-T-B, n = hrs.length, bw = pw/n;
-  const maxK = Math.max(compact?20:25, Math.ceil(Math.max(...hrs.map(x=>x.p.gust||0), c.iMax)/5)*5);
-  const maxW = Math.max(1.5, Math.ceil(Math.max(...hrs.map(x=>x.p.wave||0), c.wMax)*2)/2);
-  const yK = k => T + ph - (k/maxK)*ph, yW = w => T + ph - (w/maxW)*ph;
-  const col = s => `var(--${verdict(s).k})`;
-  const fs = compact ? 9 : 11;
-  let g = `<rect x="${L}" y="${yK(c.iMax)}" width="${pw}" height="${yK(c.iMin)-yK(c.iMax)}" fill="var(--ideal-t)"/>`;
-  const step = compact ? 10 : 5;
-  for(let k=0;k<=maxK;k+=step){ g += `<line x1="${L}" x2="${W-R}" y1="${yK(k)}" y2="${yK(k)}" stroke="var(--grid)"/><text x="${L-4}" y="${yK(k)+3}" text-anchor="end" font-size="${fs}" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${k}</text>`; }
-  if(!compact) for(let w=0; w<=maxW+1e-9; w+=0.5) g += `<text x="${W-R+6}" y="${yK(0) - (w/maxW)*ph + 4}" font-size="${fs}" fill="var(--sea)" font-family="IBM Plex Mono,monospace">${w.toLocaleString("ca")}</text>`;
-  const nk = nowKey();
-  hrs.forEach((x,j) => {
-    const cx = L + bw*j + bw/2, w = x.p.wind||0, gu = x.p.gust||0, bwid = bw*0.62;
-    if(x.p.t === nk) g += `<rect x="${L+bw*j}" y="${T}" width="${bw}" height="${ph}" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="3 2"/>`;
-    g += `<rect x="${cx-bwid/2}" y="${yK(w)}" width="${bwid}" height="${Math.max(0,yK(0)-yK(w))}" fill="${col(x.s.score)}"/>`;
-    g += `<line x1="${cx-bwid/2}" x2="${cx+bwid/2}" y1="${yK(gu)}" y2="${yK(gu)}" stroke="var(--ink)" stroke-width="2"/>`;
-    if(!compact){ g += `<line x1="${cx}" x2="${cx}" y1="${yK(gu)}" y2="${yK(w)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 2"/>`;
-      g += `<g transform="translate(${cx-8} ${Hh-B+3})" color="var(--ink)">${arrow(x.p.dir,16)}</g>`; }
-    if(!compact || x.h%3===0) g += `<text x="${cx}" y="${Hh-2}" text-anchor="middle" font-size="${fs}" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${x.h}</text>`;
-  });
-  if(!compact){ const pts = hrs.map((x,j) => x.p.wave==null ? null : [L+bw*j+bw/2, yW(x.p.wave)]).filter(Boolean);
-    if(pts.length>1) g += `<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--sea)" stroke-width="2.5"/>` + pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="var(--sea)"/>`).join("");
-    g += `<text x="${L}" y="12" font-size="11" fill="var(--muted)" font-family="IBM Plex Sans,sans-serif" font-weight="600">kn</text><text x="${W-R+6}" y="12" font-size="11" fill="var(--sea)" font-family="IBM Plex Sans,sans-serif" font-weight="600">m</text>`; }
-  return `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Vent i ratxes per hores">${g}</svg>`;
-}
-function hourTable(date, h0, h1){
-  const c = crit[act], nk = nowKey(); let rows = "";
-  for(let h=h0; h<=h1; h++){ const p = DATA.hours[hourKey(date,h)]; if(!p) continue; const s = scoreHour(p,c), v = verdict(s.score);
-    rows += `<tr class="${p.t===nk?"now-row":""}"><td>${h}:00</td><td class="l"><span class="tag k-${v.k}">${v.t}</span></td>
-      <td class="l"><span style="display:inline-flex;align-items:center;gap:4px">${arrow(p.dir,14)}${WABBR[Math.round(norm(p.dir)/45)%8]}</span></td>
-      <td><b>${r0(p.wind)}</b></td><td>${r0(p.gust)}</td><td>${r1(p.wave)}</td><td>${r1(p.per)}</td><td>${r0(p.temp)}°</td><td>${r1(p.sst)}°</td><td>${p.pp ?? "–"}%</td>
-      <td class="warn">${s.flags.map(esc).join(" · ")}</td></tr>`; }
-  return `<div class="tbl"><table><thead><tr><th>Hora</th><th class="l">Estat</th><th class="l">Dir.</th><th>Vent kn</th><th>Ratxa</th><th>Onada m</th><th>Per. s</th><th>Aire</th><th>Aigua</th><th>Pluja</th><th class="l">Avisos</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-}
-const chartLegend = () => `<div class="legend"><span><span class="sw" style="background:var(--ideal)"></span>Vent mitjà, color = idoneïtat</span><span><span class="sw" style="background:var(--ink);height:3px"></span>Ratxa</span><span><span class="sw" style="background:var(--sea);height:3px"></span>Onada (eix dret)</span><span><span class="sw" style="background:var(--ideal-t);border:1px solid var(--line)"></span>Vent ideal ${esc(DEFAULTS[act].short)}</span></div>`;
-
-/* ---------- render ---------- */
-function renderSeg(){ $("actSeg").innerHTML = Object.keys(DEFAULTS).map(k => `<button type="button" data-act="${k}" aria-pressed="${k===act}">${esc(DEFAULTS[k].short)}</button>`).join(""); }
-
-function renderHero(){
-  const fc = DATA.now, c = crit[act], live = stFresh();
-  const n = live ? Object.assign({}, fc, {wind:ST.wind, gust:ST.gust, dir:ST.dir, temp:ST.temp}) : fc;
-  if(n.wind==null){ $("dash").hidden = true; return; }
-  $("dash").hidden = false;
-  const s = scoreHour(n, c), v = verdict(s.score);
-  const mins = live ? Math.max(0, Math.round((Date.now()-ST.at)/60000)) : null;
-  $("verdict").className = "verdict v-"+v.k;
-  $("verdict").innerHTML = `<span class="big">${v.t}</span><span class="score">${s.score ?? "–"}/100 · ${esc(DEFAULTS[act].name)}</span>
-    <span class="src"><span class="live-dot ${live?"on":""}"></span>${live ? `Estació en directe · fa ${mins} min` : "Previsió del model"}</span>
-    ${s.flags.length ? `<span class="flags">Avís: ${s.flags.map(esc).join(" · ")}</span>` : ""}`;
-  $("rose").innerHTML = roseSvg({dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live}) +
-    `<div class="cap"><span>${windName(n.dir)} ${r0(n.dir)}°</span>${live?`<span><svg width="18" height="6" aria-hidden="true"><line x1="0" y1="3" x2="18" y2="3" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/></svg>Previsió</span>`:""}${fc.wdir!=null?`<span><svg width="10" height="10" aria-hidden="true"><polygon points="5,10 0,0 10,0" fill="var(--sea)"/></svg>Onada</span>`:""}</div>`;
-  const kind = isOffshore(n.dir) ? "Terral: vent de terra" : isOnshore(n.dir) ? "Vent de mar" : "Vent lateral";
-  $("nums").innerHTML = `
-    <div class="num"><span class="lbl">Vent${live?" mesurat":""}</span><span class="v">${r0(n.wind)}<small>kn</small></span><span class="x">${kind}${live?` · model ${r0(fc.wind)} kn`:""}</span></div>
-    <div class="num"><span class="lbl">Ratxa</span><span class="v">${r0(n.gust)}<small>kn</small></span><span class="x">${n.gust!=null&&n.wind!=null?"+"+r0(n.gust-n.wind)+" kn sobre el vent mitjà":""}</span></div>
-    <div class="num"><span class="lbl">Onada</span><span class="v">${r1(fc.wave)}<small>m</small></span><span class="x">${fc.per!=null?r1(fc.per)+" s":""}${fc.wdir!=null?" · de "+windName(fc.wdir):""}</span></div>`;
-  const i = DATA.daily.time.indexOf(todayDate());
-  $("row3").innerHTML = `
-    <div class="num"><span class="lbl">Aire</span><span class="v">${r0(n.temp)}<small>°C</small></span><span class="x" style="display:flex;align-items:center;gap:4px">${wxIcon(fc.code,14)}${live?"Estació":"Model"}</span></div>
-    <div class="num"><span class="lbl">Aigua</span><span class="v">${r1(fc.sst)}<small>°C</small></span><span class="x">${esc(suit(fc.sst))}</span></div>
-    <div class="num"><span class="lbl">Sol</span><span class="v" style="font-size:1.1rem;line-height:1.3">↑${DATA.daily.sunrise[i]?.slice(11,16)||"–"}<br>↓${DATA.daily.sunset[i]?.slice(11,16)||"–"}</span></div>`;
-  // avui
-  const td = todayDate();
-  const slots = SLOTS.map(sl => { const a = slotAgg(td, sl, c); if(!a) return "";
-    const vv = verdict(a.score);
-    return `<div class="sl t-${vv.k}${a.past?" past":""}"><div class="h">${sl.label}<span class="tag k-${vv.k}">${vv.t}</span></div>
-      <div class="w">${arrow(a.dir,14)}${r0(a.wind)}<small>/${r0(a.gust)}</small></div>
-      <div class="o">${windName(a.dir)} · ${r1(a.wave)} m</div></div>`; }).join("");
-  $("today").innerHTML = `<div class="today-head"><span class="lbl">Avui · vent per hores (kn)</span></div>
-    <div class="slots">${slots}</div><div class="spark">${hourChart(td, 7, 21, true)}</div>
-    ${live?`<div class="x muted" style="font-size:.76rem;font-weight:600">Estació: humitat ${r0(ST.hum)}% · ${r0(ST.pres)} hPa</div>`:""}`;
-}
-function renderHours(){
-  const td = todayDate(); const start = Math.max(7, +nowKey().slice(11,13) - 1);
-  $("hoursBody").innerHTML = `<div class="chart">${hourChart(td, 7, 21, false)}</div>${chartLegend()}${hourTable(td, Math.min(start,21), 21)}`;
-  const best = SLOTS.map(sl => ({sl, a:slotAgg(td, sl, crit[act])})).filter(x=>x.a && !x.a.past).sort((a,b)=>b.a.score-a.a.score)[0];
-  $("peekHours").textContent = best ? "Millor: "+best.sl.label.toLowerCase()+" ("+verdict(best.a.score).t.toLowerCase()+")" : "";
-}
-function dayName(date, i){ const d = new Date(date+"T12:00:00"); return {name: i===0 ? "Avui" : i===1 ? "Demà" : DAYS_L[d.getDay()], dm: d.getDate()+" "+MONTHS[d.getMonth()]}; }
-function renderWeek(){
-  const c = crit[act], D = DATA.daily; let html = `<div class="wk-head"><div>Dia</div>${SLOTS.map(s=>`<div>${s.label} ${s.range}</div>`).join("")}</div>`;
-  let good = 0;
-  D.time.forEach((date, i) => {
-    const dn = dayName(date, i);
-    const cells = SLOTS.map(sl => { const a = slotAgg(date, sl, c); if(!a) return `<div></div>`; const vv = verdict(a.score); if(!a.past && a.score>=60) good++;
-      return `<div class="sl t-${vv.k}${a.past?" past":""}"><div class="h"><span class="tag k-${vv.k}">${vv.t}</span>${wxIcon(a.code,14)}</div>
-        <div class="w">${arrow(a.dir,14)}${r0(a.wind)}<small>/${r0(a.gust)} kn</small></div>
-        <div class="o">${windName(a.dir)} · ${r1(a.wave)} m · ${r0(a.temp)}°</div>
-        ${a.flags.length?`<div class="o" style="color:var(--no)">${a.flags.map(esc).join(" · ")}</div>`:""}</div>`; }).join("");
-    const open = openDay === date;
-    html += `<button type="button" class="wrow" data-day="${date}" aria-expanded="${open}" aria-label="${dn.name} ${dn.dm}: mostra les hores">
-      <div class="d"><b>${dn.name}</b><span>${dn.dm} ${wxIcon(D.weather_code[i],14)} ${r0(D.temperature_2m_min[i])}–${r0(D.temperature_2m_max[i])}°</span></div>${cells}</button>`;
-    if(open) html += `<div class="wdetail"><h3>${dn.name} ${dn.dm} · per hores</h3><div class="chart">${hourChart(date, 7, 21, false)}</div>${chartLegend()}${hourTable(date, 7, 21)}</div>`;
-  });
-  $("week").innerHTML = html;
-  $("peekWeek").textContent = good ? good+" franges bones o ideals" : "Cap franja bona";
-}
-function renderCrit(){
-  const c = crit[act];
-  $("critIntro").textContent = "Llindars per a "+DEFAULTS[act].name+". Ajusta'ls al teu nivell; es desen en aquest dispositiu.";
-  $("peekCrit").textContent = DEFAULTS[act].short+": ideal "+c.iMin+"–"+c.iMax+" kn, onada < "+r1(c.wMax)+" m";
-  const F = [["min","Vent mínim (kn)",1],["iMin","Ideal des de (kn)",1],["iMax","Ideal fins a (kn)",1],["max","Vent màxim (kn)",1],["gust","Ratxa màxima (kn)",1],["wOk","Onada còmoda (m)",0.1],["wMax","Onada màxima (m)",0.1]];
-  $("crit").innerHTML = F.map(([k,l,st]) => `<label for="c_${k}">${l}<input id="c_${k}" type="number" inputmode="decimal" step="${st}" min="0" value="${c[k]}" data-k="${k}"></label>`).join("");
-}
-function render(){
-  renderSeg(); renderCrit();
-  if(!DATA) return;
-  renderHero(); renderHours(); renderWeek();
-  $("updated").textContent = "Previsió descarregada el "+stamp(DATA.fetchedAt)+".";
-}
-
-/* ---------- events ---------- */
-$("actSeg").addEventListener("click", e => { const b = e.target.closest("button[data-act]"); if(!b) return; act = b.dataset.act; store.set("mm_act", act); render(); });
-$("week").addEventListener("click", e => { const b = e.target.closest(".wrow"); if(!b) return; openDay = openDay === b.dataset.day ? null : b.dataset.day; renderWeek(); });
-$("refresh").addEventListener("click", () => { load(); loadStation(); });
-$("crit").addEventListener("change", e => { const k = e.target.dataset.k; if(!k) return; const v = parseFloat(e.target.value); if(isNaN(v)) return;
-  crit[act][k] = v; store.set("mm_crit", crit); renderCrit(); if(DATA){ renderHero(); renderHours(); renderWeek(); } });
-$("resetCrit").addEventListener("click", () => { crit[act] = JSON.parse(JSON.stringify(DEFAULTS[act])); store.set("mm_crit", crit); render(); });
-
-renderSeg(); renderCrit();
-load(); loadStation();
-setInterval(load, 30*60*1000);
-setInterval(() => { if(document.visibilityState === "visible") loadStation(); }, 2*60*1000);
-document.addEventListener("visibilitychange", () => { if(document.visibilityState !== "visible") return; loadStation(); if(DATA && Date.now()-new Date(DATA.fetchedAt) > 20*60*1000) load(); });
-
-/* ---------- instal·lació ---------- */
-let deferredPrompt = null;
-window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredPrompt = e; $("install").hidden = false; });
-$("install").addEventListener("click", async () => { if(!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $("install").hidden = true; });
-window.addEventListener("appinstalled", () => { $("install").hidden = true; });
-if("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="app.js"></script>
+<script src="trip.js"></script>
 </body>
 </html>
