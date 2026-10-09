@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=21">
+<link rel="stylesheet" href="app.css?v=22">
 </head>
 <body>
 <div class="app">
@@ -43,6 +43,9 @@
   <div class="vp-row"><span class="lbl">Mida del text</span>
     <div class="seg" role="group" aria-label="Mida del text" id="sizeSeg">
       <button type="button" data-size="normal">Normal</button><button type="button" data-size="big"><span style="font-size:1.25em">A</span>&nbsp;Gran</button></div></div>
+  <div class="vp-row"><span class="lbl">Model de previsió</span>
+    <div class="seg" role="group" aria-label="Model de previsió" id="modelSeg">
+      <button type="button" data-model="arome">AROME</button><button type="button" data-model="auto">Automàtic</button><button type="button" data-model="ecmwf">ECMWF</button></div></div>
   <p class="note">«Gran» fa les lletres i els números molt més grans i treu els indicadors gràfics de la primera pantalla.</p>
   <button class="btn" type="button" id="closeView">Fet</button>
 </div>
@@ -221,8 +224,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=21"></script>
-<script src="trip.js?v=21"></script>
-<script src="maps.js?v=21"></script>
+<script src="app.js?v=22"></script>
+<script src="trip.js?v=22"></script>
+<script src="maps.js?v=22"></script>
 </body>
 </html>

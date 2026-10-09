@@ -132,20 +132,61 @@ function build(fc, ma){
     M.time.forEach((t,i) => { const h = hours[t]; if(!h) return;
       h.wave = M.wave_height?.[i] ?? null; h.wdir = M.wave_direction?.[i] ?? null; h.per = M.wave_period?.[i] ?? null; h.sst = M.sea_surface_temperature?.[i] ?? null; }); }
   const c = fc.current || {}, mc = (ma && ma.current) || {};
-  return { hours, daily: fc.daily, fetchedAt: new Date().toISOString(), marineOk: !!(ma && ma.hourly),
-    now: {t:c.time, temp:c.temperature_2m, code:c.weather_code, wind:c.wind_speed_10m, dir:c.wind_direction_10m, gust:c.wind_gusts_10m,
+  return { base: hours, hours, daily: fc.daily, fetchedAt: new Date().toISOString(), marineOk: !!(ma && ma.hourly),
+    nowBase: {t:c.time, temp:c.temperature_2m, code:c.weather_code, wind:c.wind_speed_10m, dir:c.wind_direction_10m, gust:c.wind_gusts_10m,
       wave:mc.wave_height ?? null, per:mc.wave_period ?? null, wdir:mc.wave_direction ?? null, sst:mc.sea_surface_temperature ?? null} };
+}
+/* ---------- models de previsió ---------- */
+// «Automàtic» = la millor combinació d'Open-Meteo. AROME (Météo-France, 1,3–2,5 km) arriba a ~2 dies i ARPEGE el continua
+// fins a ~4 dies; més enllà, i per als camps que no té, s'omple amb l'automàtic.
+const MODELS = {
+  arome: {label:"AROME", api:"meteofrance_seamless", long:"AROME (Météo-France)"},
+  auto:  {label:"Automàtic", api:null, long:"Automàtic (millor combinació)"},
+  ecmwf: {label:"ECMWF", api:"ecmwf_ifs025", long:"ECMWF (centre europeu)"}
+};
+let model = store.get("mm_model"); if(!MODELS[model]) model = "arome";
+const URL_ALT = `https://api.open-meteo.com/v1/forecast?latitude=${LOC.lat}&longitude=${LOC.lon}`+
+  "&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&models=meteofrance_seamless,ecmwf_ifs025"+
+  "&wind_speed_unit=kn&timezone=Europe%2FMadrid&forecast_days=7";
+function parseAlt(j){
+  if(!j || !j.hourly) return null; const H = j.hourly, out = {};
+  ["meteofrance_seamless","ecmwf_ifs025"].forEach(m => { const o = {};
+    H.time.forEach((t,i) => { const w = H["wind_speed_10m_"+m]?.[i]; if(w == null) return;
+      o[t] = {wind:w, gust:H["wind_gusts_10m_"+m]?.[i] ?? null, dir:H["wind_direction_10m_"+m]?.[i] ?? null, temp:H["temperature_2m_"+m]?.[i] ?? null}; });
+    out[m] = o; });
+  return out;
+}
+// Construeix DATA.hours a partir de la base (automàtic) i del model triat
+function applyModel(){
+  if(!DATA || !DATA.base) return;
+  const alt = MODELS[model].api && DATA.alt ? DATA.alt[MODELS[model].api] : null;
+  const hours = {}; let lastAlt = null;
+  for(const t in DATA.base){ const b = DATA.base[t], a = alt && alt[t];
+    hours[t] = a ? Object.assign({}, b, {wind:a.wind, gust:a.gust ?? b.gust, dir:a.dir ?? b.dir, temp:a.temp ?? b.temp, src:model}) : Object.assign({}, b, {src:"auto"});
+    if(a) lastAlt = t; }
+  DATA.hours = hours; DATA.modelEnd = lastAlt;
+  const h = hours[nowKey()];
+  DATA.now = Object.assign({}, DATA.nowBase, h && h.src !== "auto" ? {wind:h.wind, gust:h.gust, dir:h.dir, temp:h.temp} : {});
+}
+// Error mitjà del vent previst respecte l'estació en les hores ja passades d'avui
+function modelErrors(){
+  if(!DATA || !DATA.base || OBS.key !== stKey) return [];
+  const rows = [["auto", DATA.base], ["arome", DATA.alt?.meteofrance_seamless], ["ecmwf", DATA.alt?.ecmwf_ifs025]];
+  return rows.map(([k, src]) => { let sum = 0, n = 0;
+    for(const t in OBS.hours){ if(t >= nowKey()) continue; const o = OBS.hours[t], f = src && src[t]; if(o.wind != null && f && f.wind != null){ sum += Math.abs(o.wind - f.wind); n++; } }
+    return {k, mae: n ? sum/n : null, n}; }).filter(x => x.mae != null);
 }
 function showMsg(text, err){ const m = $("msg"); m.hidden = !text; m.textContent = text || ""; m.className = "msg"+(err?" err":""); }
 async function load(){
   $("refresh").setAttribute("aria-busy","true");
   try{
-    const [fc, ma] = await Promise.all([getJSON(URL_FC), getJSON(URL_MA).catch(()=>null)]);
-    DATA = build(fc, ma); store.set("mm_cache", DATA);
+    const [fc, ma, alt] = await Promise.all([getJSON(URL_FC), getJSON(URL_MA).catch(()=>null), getJSON(URL_ALT).catch(()=>null)]);
+    DATA = build(fc, ma); DATA.alt = parseAlt(alt); applyModel();
+    const {hours, ...toCache} = DATA; store.set("mm_cache", toCache);
     showMsg(DATA.marineOk ? "" : "Sense dades d'onatge ara mateix: la valoració només té en compte el vent.");
   }catch(e){
     const cached = store.get("mm_cache");
-    if(cached){ DATA = cached; showMsg("Sense connexió. Mostro la previsió desada el "+stamp(cached.fetchedAt)+".", true); }
+    if(cached){ DATA = cached; if(!DATA.base){ DATA.base = DATA.hours; DATA.nowBase = DATA.now; } applyModel(); showMsg("Sense connexió. Mostro la previsió desada el "+stamp(cached.fetchedAt)+".", true); }
     else { showMsg("No s'ha pogut carregar la previsió. Comprova la connexió i torna-ho a provar.", true); $("refresh").removeAttribute("aria-busy"); return; }
   }
   $("refresh").removeAttribute("aria-busy");
@@ -442,12 +483,16 @@ function renderNow(){
     const vv = verdict(a);
     return `<div class="sl k-${vv.k}${a.past?" past":""}"><div class="h">${sl.label}<span class="tag"><span class="vd"></span>${vv.t}</span></div>
       <div class="w">${arrow(a.dir,13)}${r0(a.wind)}<small>/${r0(a.gust)} kn</small></div><div class="o">${windAbbr(a.dir)} · ${r1(a.wave)} m</div></div>`; }).join("");
-  $("outlook").innerHTML = `<div class="card-h" style="margin-bottom:4px"><span class="lbl">Avui · vent per hores</span>${wxIcon(fc.code,18)}</div>
+  $("outlook").innerHTML = `<div class="card-h" style="margin-bottom:4px"><span class="lbl">Avui · vent per hores · ${esc(MODELS[model].label)}</span>${wxIcon(fc.code,18)}</div>
     <div class="chart">${hourChart(td, 7, 21, false)}</div><div class="slots" style="margin-top:6px">${slots}</div>`;
 }
 function renderHours(){
   const td = todayDate(); const start = Math.max(7, Math.min(21, +nowKey().slice(11,13) - 3));
-  $("hoursBody").innerHTML = `<div class="chart wide">${hourChart(td, 7, 21, true)}</div>${chartLegend(true)}${hourTable(td, start, 21)}`;
+  const errs = modelErrors(), bestE = errs.length ? Math.min(...errs.map(e => e.mae)) : null;
+  const errLine = errs.length ? `<div class="model-err"><span class="lbl">Error mitjà d'avui respecte l'estació ${esc(STATIONS[stKey].name)}</span>
+      <div class="model-err-row">${errs.map(e => `<span class="${e.mae === bestE ? "best" : ""}${e.k === model ? " cur" : ""}">${esc(MODELS[e.k].label)} <b>${r1(e.mae)} kn</b></span>`).join("")}</div></div>` : "";
+  const end = DATA.modelEnd && model !== "auto" ? (() => { const d = new Date(DATA.modelEnd); return ` Previsió ${MODELS[model].label} fins ${DAYS_L[d.getDay()].toLowerCase()} a les ${pad(d.getHours())} h; després, automàtica.`; })() : "";
+  $("hoursBody").innerHTML = `${errLine}<div class="chart wide">${hourChart(td, 7, 21, true)}</div>${chartLegend(true)}${end ? `<p class="note">${esc(end.trim())}</p>` : ""}${hourTable(td, start, 21)}`;
   const best = SLOTS.map(sl => ({sl, a:slotAgg(td, sl, crit[act])})).filter(x=>x.a && !x.a.past).sort((a,b)=>b.a.score-a.a.score)[0];
   $("peekHours").textContent = best ? "Millor: "+best.sl.label.toLowerCase()+" · "+verdict(best.a).t.toLowerCase() : "";
 }
@@ -511,6 +556,10 @@ function renderViewPanel(){
 $("themeBtn").addEventListener("click", () => { const p = $("viewPanel"); p.hidden = !p.hidden; $("themeBtn").setAttribute("aria-expanded", String(!p.hidden)); renderViewPanel(); });
 $("themeSeg").addEventListener("click", e => { const b = e.target.closest("button[data-theme]"); if(!b) return; theme = b.dataset.theme; store.set("mm_theme", theme); applyTheme(); renderViewPanel(); });
 $("sizeSeg").addEventListener("click", e => { const b = e.target.closest("button[data-size]"); if(!b) return; textSize = b.dataset.size; store.set("mm_size", textSize); applySize(); renderViewPanel(); });
+$("modelSeg").addEventListener("click", e => { const b = e.target.closest("button[data-model]"); if(!b) return; model = b.dataset.model; store.set("mm_model", model);
+  document.querySelectorAll("#modelSeg button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.model === model)));
+  if(DATA){ applyModel(); renderNow(); renderHours(); renderWeek(); } });
+document.querySelectorAll("#modelSeg button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.model === model)));
 $("closeView").addEventListener("click", () => { $("viewPanel").hidden = true; $("themeBtn").setAttribute("aria-expanded","false"); });
 applySize();
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", applyTheme);
