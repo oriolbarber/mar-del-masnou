@@ -43,7 +43,7 @@
     <article class="card now">
       <div class="card-h">
         <div class="seg" role="group" aria-label="Embarcació" id="actSeg"></div>
-        <span class="src" id="src"></span>
+        <button type="button" class="src" id="src"></button>
       </div>
       <div class="now-grid">
         <div class="gauge" id="gauge"></div>
@@ -118,6 +118,53 @@
   </div>
 </section>
 
+<!-- ============ MAPES ============ -->
+<section class="view" id="view-map" hidden>
+  <div class="seg maps-seg" role="group" aria-label="Tipus de mapa" id="mapSeg">
+    <button type="button" data-map="radar" aria-pressed="true">Radar</button>
+    <button type="button" data-map="sat" aria-pressed="false">Satèl·lit</button>
+    <button type="button" data-map="windy" aria-pressed="false">Vent</button>
+    <button type="button" data-map="mb" aria-pressed="false">meteoblue</button>
+  </div>
+  <article class="card" id="mapRadar">
+    <div class="card-h"><span class="lbl" id="radarTitle">Radar de pluja · últimes 2 h</span><span class="src" id="radarTime">–</span></div>
+    <div class="map tall" id="radarMap"></div>
+    <div class="player">
+      <button class="ib" type="button" id="radarPlay" aria-label="Atura l'animació"></button>
+      <input type="range" id="radarSlider" min="0" max="0" value="0" aria-label="Moment de la imatge">
+    </div>
+    <p class="note" id="radarNote">Pluja detectada pels radars meteorològics. Font: <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>.</p>
+  </article>
+  <article class="card" id="mapWindy" hidden>
+    <div class="card-h"><span class="lbl">Previsió animada · Windy (ECMWF)</span></div>
+    <div class="seg" role="group" aria-label="Capa" id="windySeg">
+      <button type="button" data-ov="wind" aria-pressed="true">Vent</button>
+      <button type="button" data-ov="gust" aria-pressed="false">Ratxes</button>
+      <button type="button" data-ov="waves" aria-pressed="false">Onades</button>
+      <button type="button" data-ov="rain" aria-pressed="false">Pluja</button>
+      <button type="button" data-ov="clouds" aria-pressed="false">Núvols</button>
+    </div>
+    <div class="frame"><iframe id="windyFrame" title="Mapa animat de Windy" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+    <p class="note">Mou la línia de temps a sota del mapa per veure les properes hores i dies. Font: <a href="https://www.windy.com/41.476/2.318?wind,41.476,2.318,10" target="_blank" rel="noopener">Windy.com</a>.</p>
+  </article>
+  <article class="card" id="mapMb" hidden>
+    <div class="card-h"><span class="lbl">Mapes animats · meteoblue</span></div>
+    <div class="frame"><iframe id="mbFrame" title="Mapes animats de meteoblue" loading="lazy"></iframe></div>
+    <p class="note">Vent, ratxes, núvols i precipitació, satèl·lit i temperatura. Font: <a href="https://www.meteoblue.com/ca/temps/mapes/41.476N2.318E" target="_blank" rel="noopener">meteoblue</a>.</p>
+  </article>
+  <article class="card">
+    <div class="card-h"><span class="lbl">Més recursos en directe</span></div>
+    <div class="links">
+      <a href="https://www.lightningmaps.org/?lang=ca#m=oss;t=3;s=0;o=0;b=;ts=0;y=41.47;x=2.32;z=8;d=2;dl=2;dc=0;" target="_blank" rel="noopener">Llamps en directe <span>Blitzortung</span></a>
+      <a href="https://www.meteo.cat/prediccio/avisos" target="_blank" rel="noopener">Avisos Meteocat <span>Perill meteorològic</span></a>
+      <a href="https://www.meteoelmasnou.cat/plugins/radarEU/europeRadar.php" target="_blank" rel="noopener">Radar d'Europa <span>meteoelmasnou.cat</span></a>
+      <a href="https://www.meteoelmasnou.cat/plugins/satelliteImages/index.php" target="_blank" rel="noopener">Imatges de satèl·lit <span>meteoelmasnou.cat</span></a>
+      <a href="https://www.meteoelmasnou.cat/plugins/marine/index.php" target="_blank" rel="noopener">Trànsit marítim <span>meteoelmasnou.cat</span></a>
+      <a href="https://ocata2.meteoelmasnou.cat/indexDesktop.php" target="_blank" rel="noopener">Estació d'Ocata <span>meteoelmasnou.cat</span></a>
+    </div>
+  </article>
+</section>
+
 <!-- ============ HISTORIAL ============ -->
 <section class="view" id="view-log" hidden>
   <div id="logList" class="view"></div>
@@ -131,6 +178,8 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 12h15a3 3 0 1 1-3 3"/><path d="M3 16h7"/></svg>Previsió</button>
     <button type="button" data-go="trip">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v14"/><path d="M12 4l7 11h-7"/><path d="M3 19c3 2 6 2 9 0s6-2 9 0"/></svg>Sortida<span class="rec" id="recDot" hidden></span></button>
+    <button type="button" data-go="map">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Mapes</button>
     <button type="button" data-go="log">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg>Historial</button>
   </div>
@@ -140,5 +189,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="app.js"></script>
 <script src="trip.js"></script>
+<script src="maps.js"></script>
 </body>
 </html>

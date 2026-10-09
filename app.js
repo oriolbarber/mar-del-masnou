@@ -107,7 +107,11 @@ const URL_MA = `https://marine-api.open-meteo.com/v1/marine?latitude=${LOC.mlat}
   "&hourly=wave_height,wave_direction,wave_period,sea_surface_temperature"+
   "&current=wave_height,wave_direction,wave_period,sea_surface_temperature"+
   "&cell_selection=sea&timezone=Europe%2FMadrid&forecast_days=7";
-const URL_ST = "https://www.meteoelmasnou.cat/meteotemplateLive.txt";
+const STATIONS = {
+  masnou: {name:"El Masnou", url:"https://www.meteoelmasnou.cat/meteotemplateLive.txt"},
+  ocata:  {name:"Ocata",     url:"https://ocata2.meteoelmasnou.cat/meteotemplateLive.txt"}
+};
+let stKey = store.get("mm_station"); if(!STATIONS[stKey]) stKey = "masnou";
 
 async function getJSON(u){ const r = await fetch(u, {cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }
 function build(fc, ma){
@@ -139,8 +143,8 @@ async function load(){
 }
 async function loadStation(){
   try{
-    const j = await getJSON(URL_ST+"?t="+Date.now());
-    ST = {wind:j.W*KMH, gust:j.G*KMH, dir:j.B, temp:j.T, hum:j.H, pres:j.P, at:(j.U||0)*1000};
+    const key = stKey, j = await getJSON(STATIONS[key].url+"?t="+Date.now());
+    if(key === stKey) ST = {key, wind:j.W*KMH, gust:j.G*KMH, dir:j.B, temp:j.T, hum:j.H, pres:j.P, at:(j.U||0)*1000};
   }catch(e){}
   if(DATA) renderNow();
   return ST;
@@ -269,7 +273,8 @@ function renderNow(){
   const s = scoreHour(n, c), v = verdict(s.score);
   const mins = live ? Math.max(0, Math.round((Date.now()-ST.at)/60000)) : null;
   $("src").className = "src"+(live?" live":"");
-  $("src").innerHTML = `<span class="dot"></span>${live ? `Estació · fa ${mins} min` : "Previsió del model"}`;
+  $("src").innerHTML = `<span class="dot"></span>${live ? `${STATIONS[stKey].name} · fa ${mins} min` : `${STATIONS[stKey].name}: sense dades · model`}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M7 4l-4 4 4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>`;
+  $("src").setAttribute("aria-label", "Estació: "+STATIONS[stKey].name+". Canvia d'estació");
   $("gauge").innerHTML = gaugeSvg(s.score, v) + `<div class="cap"><span>${esc(DEFAULTS[act].name)}</span></div>`;
   const kind = isOffshore(n.dir) ? "terral" : isOnshore(n.dir) ? "de mar" : "lateral";
   $("rose").innerHTML = roseSvg({dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live}) +
@@ -354,7 +359,7 @@ applyTheme();
 
 /* ---------- navegació ---------- */
 function go(v){
-  ["fc","trip","log"].forEach(k => { $("view-"+k).hidden = k !== v; });
+  ["fc","trip","map","log"].forEach(k => { $("view-"+k).hidden = k !== v; });
   document.querySelectorAll(".tabs button").forEach(b => b.dataset.go === v ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
   window.scrollTo({top:0});
   window.dispatchEvent(new CustomEvent("mm-view", {detail:v}));
@@ -368,6 +373,7 @@ tick(); setInterval(tick, 20000);
 $("actSeg").addEventListener("click", e => { const b = e.target.closest("button[data-act]"); if(!b) return; act = b.dataset.act; store.set("mm_act", act); render(); });
 $("week").addEventListener("click", e => { const b = e.target.closest(".wrow"); if(!b) return; openDay = openDay === b.dataset.day ? null : b.dataset.day; renderWeek(); });
 $("refresh").addEventListener("click", () => { load(); loadStation(); });
+$("src").addEventListener("click", () => { stKey = stKey === "masnou" ? "ocata" : "masnou"; store.set("mm_station", stKey); ST = null; renderNow(); loadStation(); });
 $("crit").addEventListener("change", e => { const k = e.target.dataset.k; if(!k) return; const v = parseFloat(e.target.value); if(isNaN(v)) return;
   crit[act][k] = v; store.set("mm_crit", crit); renderCrit(); if(DATA){ renderNow(); renderHours(); renderWeek(); } });
 $("resetCrit").addEventListener("click", () => { crit[act] = JSON.parse(JSON.stringify(DEFAULTS[act])); store.set("mm_crit", crit); render(); });
