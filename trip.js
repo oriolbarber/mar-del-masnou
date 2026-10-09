@@ -58,6 +58,7 @@ const COMPASS16 = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSO","SO","OSO
 const cogName = d => d==null ? "–" : COMPASS16[Math.round(norm(d)/22.5)%16];
 
 /* ---------- estat de la sortida ---------- */
+let ecoTimer = null, ecoVisible = false;
 let LIVE = null, watchId = null, wakeLock = null, tTimer = null, tWind = null, tSave = null, liveMap = null, liveLine = null, liveDot = null;
 
 function windNear(trip, t){
@@ -109,15 +110,25 @@ async function keepAwake(){
 }
 function startWatch(){
   if(!("geolocation" in navigator)){ $("tripErr").textContent = "Aquest navegador no té accés al GPS."; $("tripErr").hidden = false; return false; }
-  watchId = navigator.geolocation.watchPosition(onPos, onPosErr, {enableHighAccuracy:true, maximumAge:0, timeout:30000});
   keepAwake();
-  clearInterval(tTimer); tTimer = setInterval(() => { if(LIVE) $("liveTimer").textContent = fmtDur(Date.now()-LIVE.start); }, 1000);
-  clearInterval(tWind); tWind = setInterval(sampleWind, 60*1000); sampleWind();
+  clearInterval(tTimer); clearInterval(ecoTimer);
+  if(LIVE.eco){
+    // Estalvi: una lectura de GPS cada 20 s (el xip pot reposar entre lectures) i res més en marxa
+    const fix = () => navigator.geolocation.getCurrentPosition(onPos, onPosErr, {enableHighAccuracy:true, maximumAge:5000, timeout:15000});
+    fix(); ecoTimer = setInterval(fix, 20000);
+    tTimer = setInterval(() => { if(LIVE){ $("liveTimer").textContent = fmtDur(Date.now()-LIVE.start); renderEco(); } }, 20000);
+    setEco(true);
+  } else {
+    watchId = navigator.geolocation.watchPosition(onPos, onPosErr, {enableHighAccuracy:true, maximumAge:0, timeout:30000});
+    tTimer = setInterval(() => { if(LIVE) $("liveTimer").textContent = fmtDur(Date.now()-LIVE.start); }, 1000);
+  }
+  clearInterval(tWind); tWind = setInterval(sampleWind, (LIVE.eco ? 5 : 1)*60*1000); sampleWind();
   clearInterval(tSave); tSave = setInterval(saveLive, 15000);
   return true;
 }
 function stopWatch(){
   if(watchId != null) navigator.geolocation.clearWatch(watchId); watchId = null;
+  clearInterval(ecoTimer); ecoTimer = null; setEco(false);
   clearInterval(tTimer); clearInterval(tWind); clearInterval(tSave);
   try{ wakeLock && wakeLock.release(); }catch(e){} wakeLock = null;
 }
@@ -131,7 +142,8 @@ function setRecUI(){
 
 function startTrip(){
   $("tripErr").hidden = true;
-  LIVE = {id: Date.now(), name: $("tripName").value.trim(), act, start: Date.now(), pts: [], wind: []};
+  const eco = $("ecoMode").checked; store.set("mm_eco", eco);
+  LIVE = {id: Date.now(), name: $("tripName").value.trim(), act, start: Date.now(), pts: [], wind: [], eco};
   if(!startWatch()){ LIVE = null; return; }
   saveLive(); setRecUI(); renderLive();
 }
@@ -141,6 +153,7 @@ async function stopTrip(){
   if(Date.now() - confirmStop > 4000){ confirmStop = Date.now(); $("stopTrip").textContent = "Toca de nou per desar"; setTimeout(() => $("stopTrip").textContent = "Atura i desa", 4000); return; }
   stopWatch();
   const trip = Object.assign({}, LIVE, {end: Date.now()});
+  if(trip.wind.length < 2) await fillModelWind(trip);
   trip.summary = summarize(trip);
   try{ await DB.put(trip); }catch(e){}
   LIVE = null; store.del("mm_live"); $("tripName").value = "";
@@ -249,7 +262,60 @@ function renderLive(){
     stat("course", "Angle al vent", twa!=null ? r0(twa)+"°" : "–", "", twa!=null ? posOf(twa).t : "Navega per calcular-lo") +
     stat("clock", "En moviment", fmtDurShort(s.movingS*1000), "", P.length+" punts GPS");
   $("ctaLabel").textContent = "Sortida en curs · " + fmtDurShort(Date.now()-LIVE.start);
+  if(LIVE.eco){ $("ecoOn").hidden = ecoVisible; renderEco(sogNow, s, w, cog); if(ecoVisible) return; }
   if(!$("view-trip").hidden) updateLiveMap();
+}
+
+/* ---------- pantalla d'estalvi ---------- */
+function setEco(on){ ecoVisible = !!on && !!LIVE && LIVE.eco; $("ecoScreen").hidden = !ecoVisible; if(LIVE && LIVE.eco) $("ecoOn").hidden = ecoVisible; if(ecoVisible){ destroyLiveMap(); renderEco(); } }
+function renderEco(sog, s, w, cog){
+  if(!ecoVisible || !LIVE) return;
+  const P = LIVE.pts, last = P[P.length-1];
+  if(s === undefined){ s = summarize(LIVE); sog = last ? last.sog : null; cog = last ? last.cog : null; w = stFresh() ? {wind:ST.wind, dir:ST.dir} : LIVE.wind[LIVE.wind.length-1]; }
+  const m = Math.floor((Date.now()-LIVE.start)/60000);
+  $("ecoAct").textContent = DEFAULTS[LIVE.act]?.name || "";
+  $("ecoGps").textContent = last ? "GPS fa "+Math.max(0, Math.round((Date.now()-last.t)/1000))+" s" : "Esperant GPS…";
+  $("ecoSog").textContent = r1(sog);
+  $("ecoDist").textContent = s.distNm.toFixed(2).replace(".",",");
+  $("ecoTime").textContent = Math.floor(m/60)+":"+pad(m%60);
+  $("ecoWind").textContent = w ? r0(w.wind) : "–"; $("ecoWindU").textContent = w ? "kn · "+windAbbr(w.dir) : "kn";
+  $("ecoCog").textContent = cog!=null ? r0(cog)+"°" : "–"; $("ecoCogU").textContent = cog!=null ? cogName(cog) : "\u00a0";
+}
+
+/* ---------- vent del model per a sortides sense estació (o importades) ---------- */
+async function fillModelWind(trip){
+  try{
+    const ymd = ms => { const d = new Date(ms); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); };
+    const u = `https://api.open-meteo.com/v1/forecast?latitude=${LOC.lat}&longitude=${LOC.lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m&wind_speed_unit=kn&timezone=Europe%2FMadrid&start_date=${ymd(trip.start)}&end_date=${ymd(trip.end||trip.start)}`;
+    const H = (await getJSON(u)).hourly; const t0 = trip.start - 3600e3, t1 = (trip.end||trip.start) + 3600e3;
+    const add = H.time.map((t,i) => ({t: new Date(t).getTime(), wind:H.wind_speed_10m[i], gust:H.wind_gusts_10m[i], dir:H.wind_direction_10m[i], temp:H.temperature_2m[i], src:"model"}))
+      .filter(w => w.t >= t0 && w.t <= t1 && w.wind != null);
+    trip.wind = [...trip.wind, ...add].sort((a,b) => a.t-b.t);
+  }catch(e){}
+}
+
+/* ---------- importar GPX (ruta gravada amb una altra app o un rellotge) ---------- */
+async function importGpx(file){
+  const msg = t => { $("importMsg").textContent = t; $("importMsg").hidden = !t; };
+  msg("Llegint "+file.name+"…");
+  try{
+    const xml = new DOMParser().parseFromString(await file.text(), "application/xml");
+    const nodes = [...xml.getElementsByTagName("trkpt"), ...xml.getElementsByTagName("rtept")];
+    const pts = [];
+    for(const n of nodes){ const tm = n.getElementsByTagName("time")[0]; if(!tm) continue;
+      const p = {t: Date.parse(tm.textContent.trim()), lat: +(+n.getAttribute("lat")).toFixed(6), lon: +(+n.getAttribute("lon")).toFixed(6), acc:null, sog:null, cog:null};
+      if(isNaN(p.t) || isNaN(p.lat) || isNaN(p.lon)) continue;
+      const last = pts[pts.length-1];
+      if(last){ const dt = (p.t-last.t)/1000; if(dt < 1) continue; const d = hav(last,p); if(d/dt*KN > 30) continue; p.sog = +(d/dt*KN).toFixed(2); if(d > 4) p.cog = Math.round(bearing(last,p)); }
+      pts.push(p);
+    }
+    if(pts.length < 2){ msg("Aquest fitxer no té una ruta amb hores. Cal un GPX gravat (track), no una ruta planificada."); return; }
+    const nm = xml.getElementsByTagName("name")[0]?.textContent?.trim();
+    const trip = {id: Date.now(), name: nm || file.name.replace(/\.gpx$/i,""), act, start: pts[0].t, end: pts[pts.length-1].t, pts, wind: [], imported: true};
+    await fillModelWind(trip);
+    trip.summary = summarize(trip);
+    await DB.put(trip); msg(""); showTrip(trip.id);
+  }catch(e){ msg("No s'ha pogut llegir el fitxer GPX."); }
 }
 
 /* ---------- historial ---------- */
@@ -259,8 +325,11 @@ async function renderList(){
   if(detailMap){ detailMap.remove(); detailMap = null; }
   let trips = []; try{ trips = (await DB.all()) || []; }catch(e){}
   trips.sort((a,b) => b.start - a.start);
-  if(!trips.length){ $("logList").innerHTML = `<article class="card empty">Encara no hi ha cap sortida desada.<br>Prem «Sortida» per gravar la primera.</article>`; return; }
-  $("logList").innerHTML = `<div class="card-h" style="margin:0"><h2 style="font-size:1.3rem;text-transform:uppercase">Sortides</h2><span class="lbl">${trips.length}</span></div><div class="trips">` + trips.map(t => {
+  const imp = `<article class="card"><div class="import-row"><label class="btn" for="gpxIn" style="display:inline-flex;align-items:center">Importa un GPX</label>
+    <span class="note">Ruta gravada amb una altra app o un rellotge (funcionen amb la pantalla apagada). S'hi afegeix el vent del model.</span></div>
+    <input type="file" id="gpxIn" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden><div class="msg" id="importMsg" hidden style="margin-top:8px"></div></article>`;
+  if(!trips.length){ $("logList").innerHTML = `<article class="card empty">Encara no hi ha cap sortida desada.<br>Prem «Sortida» per gravar la primera.</article>` + imp; return; }
+  $("logList").innerHTML = imp + `<div class="card-h" style="margin:0"><h2 style="font-size:1.3rem;text-transform:uppercase">Sortides</h2><span class="lbl">${trips.length}</span></div><div class="trips">` + trips.map(t => {
     const d = new Date(t.start), s = t.summary || summarize(t);
     return `<button type="button" class="trip" data-trip="${t.id}"><b>${esc(t.name || (DAYS_L[d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()]))}</b><span class="m">${s.distNm.toFixed(1).replace(".",",")} nm</span>
       <span>${d.toLocaleDateString("ca",{day:"numeric",month:"short",year:"numeric"})} · ${pad(d.getHours())}:${pad(d.getMinutes())} · ${esc(DEFAULTS[t.act]?.short||"")}</span><span class="m" style="font-weight:600;color:var(--muted)">${fmtDurShort(s.dur)} · màx ${r1(s.maxKn)} kn</span></button>`; }).join("") + `</div>`;
@@ -344,6 +413,10 @@ function download(t, kind){
 
 /* ---------- connexions ---------- */
 $("startTrip").addEventListener("click", startTrip);
+$("ecoMode").checked = !!store.get("mm_eco");
+$("ecoOff").addEventListener("click", () => { setEco(false); go("trip"); renderLive(); });
+$("ecoOn").addEventListener("click", () => setEco(true));
+$("logList").addEventListener("change", e => { if(e.target.id === "gpxIn" && e.target.files[0]) importGpx(e.target.files[0]); });
 $("stopTrip").addEventListener("click", stopTrip);
 $("discardTrip").addEventListener("click", discardTrip);
 $("logList").addEventListener("click", e => { const b = e.target.closest("[data-trip]"); if(b) showTrip(+b.dataset.trip); });
