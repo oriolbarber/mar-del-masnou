@@ -483,10 +483,10 @@ tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--sel)}
 .view-panel #closeView{margin-top:12px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .model-pick select{width:100%}
-/* indicadors grans (idoneïtat amb vent/onades i rosa amb histograma): un sota l'altre al mòbil */
-@media (max-width:640px){
-  .now-grid{grid-template-columns:minmax(0,1fr);gap:4px}
-  .gauge svg{max-width:250px}
-  .rose svg{max-width:290px}
-  .gauge .cap{display:none}
-}
+/* lletra gran: els dos indicadors, un sota l'altre i grans (el veredicte ja hi surt) */
+:root[data-size="big"] .now-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+:root[data-size="big"] .gauge svg{max-width:300px}
+:root[data-size="big"] .rose svg{max-width:330px}
+:root[data-size="big"] .gauge .cap{display:none}
+:root[data-size="big"] .rose .cap{font-size:1rem}
+:root[data-size="big"] .bverdict{display:none}
