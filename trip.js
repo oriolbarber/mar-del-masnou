@@ -361,7 +361,7 @@ async function importGpx(file){
 async function storagePersisted(){
   try{ if(!navigator.storage?.persisted) return false; if(await navigator.storage.persisted()) return true; return await navigator.storage.persist(); }catch(e){ return false; }
 }
-const SETTINGS_KEYS = ["mm_act","mm_crit","mm_theme","mm_size","mm_station_v2","mm_eco"];
+const SETTINGS_KEYS = ["mm_act","mm_crit","mm_theme","mm_size","mm_station_v3","mm_eco"];
 async function backupOut(){
   const msg = t => { $("backupMsg").textContent = t; $("backupMsg").hidden = !t; };
   try{

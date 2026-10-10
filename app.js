@@ -132,7 +132,8 @@ const STATIONS = {
   ocata:  {name:"Ocata Vent", url:"https://ocata2.meteoelmasnou.cat/meteotemplateLive.txt"},
   masnou: {name:"El Masnou",  url:"https://www.meteoelmasnou.cat/meteotemplateLive.txt"}
 };
-let stKey = store.get("mm_station_v2"); if(!STATIONS[stKey]) stKey = "ocata"; // per defecte, l'estació del club
+// Per defecte, El Masnou: l'anemòmetre d'Ocata Vent està arrecerat i marca un 40–80 % del vent real (comprovat oct. 2026)
+let stKey = store.get("mm_station_v3"); if(!STATIONS[stKey]) stKey = "masnou";
 
 async function getJSON(u){ const r = await fetch(u, {cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }
 function build(fc, ma){
@@ -708,7 +709,7 @@ $("week").addEventListener("click", e => { const b = e.target.closest(".wrow"); 
 let rsT = null, rsW = innerWidth;
 addEventListener("resize", () => { if(innerWidth === rsW) return; rsW = innerWidth; clearTimeout(rsT); rsT = setTimeout(() => { if(DATA){ renderNow(); renderWeek(); } }, 200); });
 $("refresh").addEventListener("click", () => { load(); loadStation(); loadObs(); loadInfo(); loadBuoy(); });
-$("src").addEventListener("click", () => { stKey = stKey === "ocata" ? "masnou" : "ocata"; store.set("mm_station_v2", stKey); ST = null; renderNow(); loadStation(); loadObs(); });
+$("src").addEventListener("click", () => { stKey = stKey === "ocata" ? "masnou" : "ocata"; store.set("mm_station_v3", stKey); ST = null; renderNow(); loadStation(); loadObs(); });
 $("crit").addEventListener("change", e => { const k = e.target.dataset.k; if(!k) return; const v = parseFloat(e.target.value); if(isNaN(v)) return;
   crit[act][k] = v; store.set("mm_crit", crit); renderCrit(); if(DATA){ renderNow(); renderHours(); renderWeek(); } });
 $("resetCrit").addEventListener("click", () => { crit[act] = JSON.parse(JSON.stringify(DEFAULTS[act])); store.set("mm_crit", crit); render(); });
