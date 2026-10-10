@@ -497,3 +497,9 @@ tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--sel)}
 .info:empty{display:none}
 .hc-read{position:relative;padding-right:96px}
 .hc-read .rd-m{position:absolute;top:7px;right:10px;display:inline-flex;align-items:center;gap:6px;font-size:.76rem;font-weight:700;color:var(--muted)}
+/* motiu sota l'indicador i avisos informatius */
+.gauge .grow{align-self:stretch;display:flex;align-items:center;gap:6px;min-width:0}
+.gauge .gflag{margin-top:0}
+.g-why{font-size:.74rem;font-weight:700;color:var(--k);line-height:1.2;min-width:0}
+.flag.info{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.hc-read small.why{color:var(--muted);font-weight:700}

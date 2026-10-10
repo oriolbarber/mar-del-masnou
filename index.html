@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=38">
+<link rel="stylesheet" href="app.css?v=39">
 </head>
 <body>
 <div class="app">
@@ -61,7 +61,8 @@
     <div class="vp-h"><h3>Criteris · <span id="critBoat"></span></h3><button class="ib-i" type="button" data-info="iCrit" aria-label="Més informació sobre els criteris" aria-expanded="false">i</button></div>
     <div class="vp-info" id="iCrit" hidden>
       <p>Llindars per a l'embarcació triada a dalt; es desen en aquest dispositiu. Defineixen el codi de colors: <b>verd</b> dins la franja ideal, <b>taronja</b> entre el mínim i l'ideal o entre l'ideal i el màxim, <b>vermell</b> fora dels límits.</p>
-      <p>Cada franja es puntua amb el vent mitjà, la ratxa màxima i l'onada. Si l'únic problema és que no bufa prou, surt <b>Poc vent</b>; <b>No apte</b> queda per a massa vent o ratxes, massa onades, pluja o tempesta. Es penalitza el <b>terral</b> (mestral, tramuntana o ponent), les ratxes molt més fortes que el vent mitjà, la <b>mar de fons</b> (període de 7 s o més), la pluja probable i les tempestes.</p>
+      <p>El veredicte té 3 nivells, els mateixos que els colors: <b>Ideal / Bo</b> (verd), <b>Limitat</b> (taronja) i <b>No recomanat</b> (vermell). A sota de l'indicador surt el motiu: poc vent, vent fort, onada, terral…</p>
+      <p>Es valora el vent mitjà i l'<b>onada que arriba a la platja</b> (amb mar de fons, de període de 7 s o més, es compta més alta). Resten les ratxes molt més fortes que la mitjana (més d'1,6 vegades), el <b>terral</b> (mestral, tramuntana o ponent; a partir de 10 kn és directament no recomanat), el plugim i la pluja probable. Són <b>no recomanat</b> sempre: ratxes per sobre del màxim, pluja, tempesta i les hores amb <b>poca llum</b> (de la posta menys 30 min fins a la sortida del sol més 30 min). Per franges, també compta la ratxa màxima de la franja. «Aigua freda» (menys de 17 °C) només avisa del neoprè.</p>
     </div>
     <div class="crit" id="crit"></div>
     <div><button class="btn" type="button" id="resetCrit">Restaura valors</button></div>
@@ -253,9 +254,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=38"></script>
-<script src="trip.js?v=38"></script>
-<script src="maps.js?v=38"></script>
-<script src="windmap.js?v=38"></script>
+<script src="app.js?v=39"></script>
+<script src="trip.js?v=39"></script>
+<script src="maps.js?v=39"></script>
+<script src="windmap.js?v=39"></script>
 </body>
 </html>

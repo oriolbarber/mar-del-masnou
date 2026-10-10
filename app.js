@@ -83,41 +83,62 @@ function waveScore(h, c){
   if(h <= c.wMax) return 100 - 60*(h-c.wOk)/(c.wMax-c.wOk);
   return Math.max(0, 25 - 60*(h-c.wMax));
 }
+// Onada que arriba a la platja: amb mar de fons (període llarg) l'onada creix en arribar a la costa
+const beachWave = p => p.wave==null ? null : (p.tp!=null && p.tp >= 7 ? p.wave * (1 + Math.min(0.5, (p.tp-6)*0.1)) : p.wave);
+// Llum de dia: ¿l'hora (o l'instant) cau abans de la sortida + 30 min o després de la posta − 30 min?
+function darkAt(t){
+  if(!DATA || !DATA.daily || !t) return false; const i = DATA.daily.time.indexOf(t.slice(0,10)); if(i < 0) return false;
+  const ms = x => new Date(x).getTime(), at = ms(t), rise = ms(DATA.daily.sunrise[i]), set = ms(DATA.daily.sunset[i]);
+  return at + 30*60e3 < rise || at >= set - 30*60e3;
+}
+const HARD = ["Ratxes fortes","Tempesta","Pluja","Terral fort","Poca llum"];
+const INFO_FLAGS = ["Mar de fons","Aigua freda"];
 function scoreHour(p, c){
   const ws = windScore(p.wind, c);
-  if(ws==null) return {score:null, flags:[]};
-  let s = Math.min(ws, waveScore(p.wave, c));
+  if(ws==null) return {score:null, flags:[], why:[]};
+  const hb = beachWave(p), os = waveScore(hb, c);
+  let s = Math.min(ws, os), pw = ws, po = os;
   const flags = [];
-  if(p.gust!=null && p.gust > c.gust){ s = Math.min(s, 25); flags.push("Ratxes fortes"); }
-  else if(p.gust!=null && p.wind!=null && p.gust - p.wind > 10){ s -= 15; flags.push("Racheig"); }
-  if(p.tp!=null && p.tp >= 7 && p.wave!=null && p.wave >= 0.4){ s -= 10; flags.push("Mar de fons"); }
-  if(isOffshore(p.dir) && p.wind >= 6){ s = p.wind >= 10 ? Math.min(s-25, 40) : s-25; flags.push("Terral"); }
+  if(p.gust!=null && p.gust > c.gust){ s = Math.min(s, 25); pw = Math.min(pw, 25); flags.push("Ratxes fortes"); }
+  else if(p.gust!=null && p.wind!=null && p.wind >= 4 && p.gust / p.wind > 1.6){ s -= 15; pw -= 15; flags.push("Racheig"); }   // racheig relatiu
+  if(p.tp!=null && p.tp >= 7 && p.wave!=null && p.wave >= 0.4) flags.push("Mar de fons");   // ja compta a l'onada de platja
+  if(isOffshore(p.dir) && p.wind >= 6){
+    s = p.wind >= 10 ? Math.min(s-25, 40) : s-25; pw = p.wind >= 10 ? Math.min(pw-25, 40) : pw-25; flags.push("Terral");
+    if(p.wind >= 10){ s = Math.min(s, 20); pw = Math.min(pw, 20); flags.push("Terral fort"); } }
   const rain = p.code!=null && ((p.code>=61 && p.code<=67) || (p.code>=80 && p.code<=82));
   if(p.code!=null && p.code>=95){ s = 0; flags.push("Tempesta"); }
   else if(rain){ s = 0; flags.push("Pluja"); }
   else if(p.code!=null && p.code>=51 && p.code<=57){ s -= 15; flags.push("Plugim"); }
   else if(p.pp!=null && p.pp>=60){ s -= 15; flags.push("Probable pluja"); }
-  // «Poc vent»: el problema és només que no bufa prou (no és perillós), a diferència de «No apte»
-  const hard = flags.some(f => f === "Ratxes fortes" || f === "Tempesta" || f === "Pluja");
-  const low = p.wind < c.iMin && !hard && waveScore(p.wave, c) >= 35;
-  // Puntuació parcial del vent i de les onades (per a l'indicador), amb les penalitzacions que corresponen a cadascú
-  let pw = ws, po = waveScore(p.wave, c);
-  if(flags.includes("Ratxes fortes")) pw = Math.min(pw, 25); else if(flags.includes("Racheig")) pw -= 15;
-  if(flags.includes("Terral")) pw = p.wind >= 10 ? Math.min(pw-25, 40) : pw-25;
-  if(flags.includes("Mar de fons")) po -= 10;
+  if(darkAt(p.t)){ s = Math.min(s, 10); flags.push("Poca llum"); }
+  if(p.sst!=null && p.sst < 17) flags.push("Aigua freda");
+  // Motius, en paraules, del que limita la sortida
+  const why = [];
+  if(p.wind < c.min) why.push("poc vent"); else if(p.wind < c.iMin) why.push("vent fluix");
+  if(p.wind > c.max) why.push("massa vent"); else if(p.wind > c.iMax) why.push("vent fort");
+  if(flags.includes("Ratxes fortes")) why.push("ratxes fortes"); else if(flags.includes("Racheig")) why.push("vent racheig");
+  if(hb!=null && hb > c.wMax) why.push("onada alta"); else if(hb!=null && hb > c.wOk) why.push("onada");
+  [["Terral fort","terral fort"],["Terral","terral"],["Mar de fons","mar de fons"],["Tempesta","tempesta"],["Pluja","pluja"],["Plugim","plugim"],["Probable pluja","pluja probable"],["Poca llum","poca llum"]]
+    .forEach(([f,t]) => { if(flags.includes(f) && !why.includes(t) && !(t === "terral" && why.includes("terral fort"))) why.push(t); });
+  // primer els motius que ho fan no recomanable
+  const PRI = ["poca llum","tempesta","pluja","terral fort","ratxes fortes","massa vent","onada alta","poc vent"];
+  why.sort((x, y) => (PRI.includes(x) ? PRI.indexOf(x) : 99) - (PRI.includes(y) ? PRI.indexOf(y) : 99));
   const cl = x => Math.max(0, Math.min(100, Math.round(x)));
-  return {score:cl(s), flags, low, wind:cl(pw), wave: p.wave==null ? null : cl(po)};
+  return {score:cl(s), flags, why, wind:cl(pw), wave: p.wave==null ? null : cl(po), hb};
 }
-const POC = {k:"poc", t:"Poc vent"};
+// Veredicte en 3 nivells, els mateixos que els colors: verd (Ideal / Bo), taronja (Limitat), vermell (No recomanat)
+const verdict = o => { const sc = (o && typeof o === "object") ? o.score : o;
+  if(sc==null) return {k:"no", t:"Sense dades", sub:""};
+  const k = sc >= 60 ? "ideal" : sc >= 35 ? "marg" : "no";
+  const t = sc >= 80 ? "Ideal" : sc >= 60 ? "Bo" : sc >= 35 ? "Limitat" : "No recomanat";
+  const why = (o && o.why) || [];
+  return {k, t, sub: sc >= 80 ? "" : why.slice(0, 2).join(" · ")}; };
+
 // Codi de 3 colors per a cada valor: verd = bo, taronja = es pot però amb limitacions, vermell = no adequat
 function lvWind(w, c){ if(w==null) return null; return (w < c.min || w > c.max) ? "no" : (w < c.iMin || w > c.iMax) ? "marg" : "ideal"; }
 function lvGust(g, c){ if(g==null) return null; return g > c.gust ? "no" : g > c.max ? "marg" : "ideal"; }
 function lvWave(h, c){ if(h==null) return null; return h > c.wMax ? "no" : h > c.wOk ? "marg" : "ideal"; }
 const lvTxt = (k, txt) => k ? `<span class="lv k-${k}">${txt}</span>` : txt;
-const verdict = o => { const sc = (o && typeof o === "object") ? o.score : o;
-  if(sc==null) return {k:"no",t:"Sense dades"};
-  if(sc < 35 && o && typeof o === "object" && o.low) return POC;
-  return VERD.find(v => sc >= v.min); };
 
 /* ---------- dades ---------- */
 const URL_FC = `https://api.open-meteo.com/v1/forecast?latitude=${LOC.lat}&longitude=${LOC.lon}`+
@@ -334,14 +355,16 @@ function slotAgg(date, slot, c){
   const dir = (sx||sy) ? norm(Math.atan2(sx,sy)*180/Math.PI) : null;
   const sc = hs.map(h => scoreHour(h,c));
   const ss = sc.map(s=>s.score).filter(s=>s!=null);
-  const score = ss.length ? Math.round(Math.min(ss.reduce((a,b)=>a+b,0)/ss.length, Math.min(...ss)+25)) : null;
+  let score = ss.length ? Math.round(Math.min(ss.reduce((a,b)=>a+b,0)/ss.length, Math.min(...ss)+25)) : null;
+  const gmax = Math.max(...hs.map(h => h.gust ?? 0));
+  if(score != null && gmax > c.gust) score = Math.min(score, 25);   // la ratxa màxima de la franja també compta
   return {wind:avg(h=>h.wind), gust:max(h=>h.gust), dir, wave:max(h=>h.wave), per:avg(h=>h.per), temp:avg(h=>h.temp), sst:avg(h=>h.sst),
-    code:max(h=>h.code), score, flags:[...new Set(sc.flatMap(s=>s.flags))], low: sc.filter(x=>x.low).length*2 >= sc.length && !sc.some(x=>x.score!=null && x.score<35 && !x.low), past: hs[hs.length-1].t < nowKey()};
+    code:max(h=>h.code), score, flags:[...new Set(sc.flatMap(s=>s.flags))], why:[...new Set(sc.flatMap(s=>s.why || []))], past: hs[hs.length-1].t < nowKey()};
 }
 
 /* ---------- indicador d'idoneïtat ---------- */
 // Indicador circular: anell exterior = idoneïtat global (per trams de color), anells interiors = vent (blanc/negre) i onades (blau)
-const kOf = sc => sc==null ? "poc" : sc >= 60 ? "ideal" : sc >= 35 ? "marg" : "no";
+const kOf = sc => sc==null ? "no" : sc >= 60 ? "ideal" : sc >= 35 ? "marg" : "no";
 function gaugeSvg(s, v){
   const score = s.score, P = (a, r) => [Math.sin(a*Math.PI/180)*r, -Math.cos(a*Math.PI/180)*r];
   const arc = (a0, a1, r) => { const [x0,y0] = P(a0,r), [x1,y1] = P(a1,r); return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${a1-a0>180?1:0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
@@ -361,7 +384,7 @@ function gaugeSvg(s, v){
   const mini = (x, val, lbl, ic) => { const r = 16, cy = 32, a = (d) => { const t = (180 + d) * Math.PI/180; return [x + Math.cos(t)*r, cy + Math.sin(t)*r]; };
     const [sx,sy] = a(0), [ex,ey] = a(Math.max(0.1, (val ?? 0)/100*180)), k = kOf(val);
     return `<path d="M${x-r} ${cy} A${r} ${r} 0 0 1 ${x+r} ${cy}" fill="none" stroke="var(--grid)" stroke-width="4" stroke-linecap="round"/>`+
-      (val ? `<path d="M${sx.toFixed(1)} ${sy.toFixed(1)} A${r} ${r} 0 0 1 ${ex.toFixed(1)} ${ey.toFixed(1)}" fill="none" stroke="var(--${k})" stroke-width="4" stroke-linecap="round"/>` : "")+
+      (val ? `<path d="M${sx.toFixed(1)} ${sy.toFixed(1)} A${r} ${r} 0 0 1 ${ex.toFixed(1)} ${ey.toFixed(1)}" fill="none" stroke="${ic === "w" ? "var(--ink)" : "var(--wave-l)"}" stroke-width="4" stroke-linecap="round"/>` : "")+
       `<g transform="translate(${x-7} ${cy-14})" fill="none" stroke="${ic === "w" ? "var(--ink)" : "var(--wave-l)"}" stroke-width="1.6" stroke-linecap="round">${ic === "w" ? `<path d="M1 4h7a2 2 0 1 0-2-2M1 7h10a2 2 0 1 1-2 2M1 10h5"/>` : `<path d="M0 8c2-3 4-3 6 0s4 3 6 0M0 11c2-3 4-3 6 0s4 3 6 0"/>`}</g>`+
       `<text x="${x}" y="${cy+11}" text-anchor="middle" font-family="Rajdhani,sans-serif" font-weight="700" font-size="10" fill="var(--muted)" letter-spacing=".6">${lbl}</text>`+
       `<text x="${x}" y="${cy+26}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-weight="700" font-size="14" fill="var(--ink)">${n10(val)}<tspan font-size="8" fill="var(--muted)">/10</tspan></text>`; };
@@ -459,7 +482,7 @@ function readout(k){
   const date = k.slice(0,10), h = +k.slice(11,13), p = hourAt(date, h); if(!p) return "";
   const c = crit[act], v = verdict(scoreHour(p, c)), d = new Date(date+"T12:00:00");
   const day = date === todayDate() ? "" : DAYS_L[d.getDay()]+" "+d.getDate()+" · ";
-  return `<span class="rd-m">${p.obs ? "Mesurat" : esc(MODELS[p.src === "auto" ? "auto" : model].label)}${p.code != null ? wxIcon(p.code, 18) : ""}</span><span class="rd-h"><b>${day}${pad(h)}:00</b><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span>${p.obs ? `<small class="obs">mesurat</small>` : ""}</span>
+  return `<span class="rd-m">${p.obs ? "Mesurat" : esc(MODELS[p.src === "auto" ? "auto" : model].label)}${p.code != null ? wxIcon(p.code, 18) : ""}</span><span class="rd-h"><b>${day}${pad(h)}:00</b><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span>${v.sub ? `<small class="why">${esc(v.sub)}</small>` : ""}${p.obs ? `<small class="obs">mesurat</small>` : ""}</span>
     <span class="rd-v"><span>${arrow(p.dir,14)} Vent ${lvTxt(lvWind(p.wind,c), r0(p.wind)+" kn")} ${windAbbr(p.dir)}</span><span>Ratxa ${lvTxt(lvGust(p.gust,c), r0(p.gust)+" kn")}</span>
     <span>Onada ${lvTxt(lvWave(p.wave,c), r1(p.wave)+" m")}${p.hmax!=null ? ` <small>(màx ${p.hmaxE?"≈":""}${r1(p.hmax)})</small>` : ""}${p.tp!=null||p.per!=null ? ` · ${r0(p.tp ?? p.per)} s` : ""}</span></span>`;
 }
@@ -595,10 +618,10 @@ function renderNow(){
   $("src").className = "src"+(live?" live":"");
   $("src").innerHTML = `<span class="dot"></span>${live ? `${STATIONS[stKey].name} · fa ${mins} min` : `${STATIONS[stKey].name}: sense dades · model`}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M7 4l-4 4 4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>`;
   $("src").setAttribute("aria-label", "Estació: "+STATIONS[stKey].name+". Canvia d'estació");
-  $("gauge").innerHTML = gaugeSvg(s, v) + `<div class="gflag" id="gflag"></div>`; renderFlag();
+  $("gauge").innerHTML = gaugeSvg(s, v) + `<div class="grow"><div class="gflag" id="gflag"></div>${v.sub ? `<span class="g-why k-${v.k}">${esc(v.sub)}</span>` : ""}</div>`; renderFlag();
   const kind = isOffshore(n.dir) ? "terral" : isOnshore(n.dir) ? "de mar" : "lateral";
   $("rose").innerHTML = roseSvg({dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live, hist: OBS.key === stKey && OBS.recs && OBS.recs.length ? roseHist(OBS.recs) : null});
-  $("flags").innerHTML = s.flags.map(f => `<span class="flag">${esc(f)}</span>`).join("");
+  $("flags").innerHTML = s.flags.map(f => `<span class="flag${INFO_FLAGS.includes(f) ? " info" : ""}">${esc(f)}</span>`).join("");
   const i = DATA.daily.time.indexOf(todayDate());
   $("stats").innerHTML =
     stat("gust", "Ratxa", lvTxt(lvGust(n.gust,c), r0(n.gust)), "kn", n.gust!=null&&n.wind!=null ? "+"+r0(n.gust-n.wind)+" sobre la mitjana" : "") +
