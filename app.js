@@ -100,7 +100,13 @@ function scoreHour(p, c){
   // «Poc vent»: el problema és només que no bufa prou (no és perillós), a diferència de «No apte»
   const hard = flags.some(f => f === "Ratxes fortes" || f === "Tempesta" || f === "Pluja");
   const low = p.wind < c.iMin && !hard && waveScore(p.wave, c) >= 35;
-  return {score:Math.max(0, Math.min(100, Math.round(s))), flags, low};
+  // Puntuació parcial del vent i de les onades (per a l'indicador), amb les penalitzacions que corresponen a cadascú
+  let pw = ws, po = waveScore(p.wave, c);
+  if(flags.includes("Ratxes fortes")) pw = Math.min(pw, 25); else if(flags.includes("Racheig")) pw -= 15;
+  if(flags.includes("Terral")) pw = p.wind >= 10 ? Math.min(pw-25, 40) : pw-25;
+  if(flags.includes("Mar de fons")) po -= 10;
+  const cl = x => Math.max(0, Math.min(100, Math.round(x)));
+  return {score:cl(s), flags, low, wind:cl(pw), wave: p.wave==null ? null : cl(po)};
 }
 const POC = {k:"poc", t:"Poc vent"};
 // Codi de 3 colors per a cada valor: verd = bo, taronja = es pot però amb limitacions, vermell = no adequat
@@ -289,13 +295,14 @@ function vecDir(list){ let x = 0, y = 0; list.forEach(o => { if(o.dir!=null){ co
 async function loadObs(){
   const key = stKey;
   try{
-    const recs = await stationRecords(key, "today");
+    let recs = await stationRecords(key, "today"), recs24 = recs;
+    if(recs.length < 12) try{ recs24 = await stationRecords(key, "custom", Date.now() - 24*3600e3, Date.now()); }catch(e){}
     const by = {};
     recs.forEach(o => { const d = new Date(o.t), k = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`; (by[k] = by[k] || []).push(o); });
     const hours = {};
     for(const k in by){ const L = by[k], ws = L.map(o=>o.wind).filter(v=>v!=null), gs = L.map(o=>o.gust).filter(v=>v!=null), ts = L.map(o=>o.temp).filter(v=>v!=null);
       hours[k] = {wind: ws.length ? ws.reduce((a,b)=>a+b,0)/ws.length : null, gust: gs.length ? Math.max(...gs) : null, dir: vecDir(L), temp: ts.length ? ts.reduce((a,b)=>a+b,0)/ts.length : null, n: L.length}; }
-    if(key === stKey){ OBS = {key, at: Date.now(), hours}; if(DATA){ applyModel(); renderNow(); renderHours(); renderWeek(); if(window.renderWindMap) renderWindMap(); } }
+    if(key === stKey){ OBS = {key, at: Date.now(), hours, recs: recs24, recs24h: recs24 !== recs}; if(DATA){ applyModel(); renderNow(); renderHours(); renderWeek(); if(window.renderWindMap) renderWindMap(); } }
   }catch(e){}
 }
 // Hora combinada: mesura real de l'estació per a les hores passades i l'actual; previsió per a la resta
@@ -333,42 +340,66 @@ function slotAgg(date, slot, c){
 }
 
 /* ---------- indicador d'idoneïtat ---------- */
-function gaugeSvg(score, v){
-  const R = 78, a0 = 135, span = 270, P = (a, r) => [Math.cos(a*Math.PI/180)*r, Math.sin(a*Math.PI/180)*r];
-  const arc = (from, to, r) => { const [x0,y0] = P(from,r), [x1,y1] = P(to,r); return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${to-from>180?1:0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
-  const s = score ?? 0, end = a0 + span*Math.max(0.005, s/100);
-  let g = `<path d="${arc(a0, a0+span, R)}" fill="none" stroke="var(--grid)" stroke-width="12" stroke-linecap="round"/>`;
-  [35,60,80].forEach(t => { const a = a0+span*t/100, [x0,y0] = P(a,R-11), [x1,y1] = P(a,R+11); g += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="var(--muted)" stroke-width="1.5"/>`; });
-  g += `<g class="arc" style="color:var(--${v.k})"><path d="${arc(a0, end, R)}" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/></g>`;
-  g += `<text y="-6" text-anchor="middle" font-family="Rajdhani,sans-serif" font-weight="700" font-size="30" fill="var(--${v.k})" letter-spacing="1">${esc(v.t.toUpperCase())}</text>`;
-  g += `<text y="24" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-weight="700" font-size="22" fill="var(--ink)">${score ?? "–"}<tspan font-size="12" fill="var(--muted)">/100</tspan></text>`;
-  g += `<text y="70" text-anchor="middle" font-family="Rajdhani,sans-serif" font-weight="700" font-size="13" fill="var(--muted)" letter-spacing="2">IDONEÏTAT</text>`;
-  return `<svg viewBox="-100 -100 200 190" role="img" aria-label="Idoneïtat ${esc(v.t)}, ${score ?? "sense dades"} sobre 100">${g}</svg>`;
+// Indicador circular: anell exterior = idoneïtat global (per trams de color), anells interiors = vent (blanc/negre) i onades (blau)
+const kOf = sc => sc==null ? "poc" : sc >= 60 ? "ideal" : sc >= 35 ? "marg" : "no";
+function gaugeSvg(s, v){
+  const score = s.score, P = (a, r) => [Math.sin(a*Math.PI/180)*r, -Math.cos(a*Math.PI/180)*r];
+  const arc = (a0, a1, r) => { const [x0,y0] = P(a0,r), [x1,y1] = P(a1,r); return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${a1-a0>180?1:0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
+  const ring = (val, r, w, color, track) => { let g = `<circle r="${r}" fill="none" stroke="${track}" stroke-width="${w}"/>`;
+    if(val > 0) g += `<path d="${arc(0, Math.min(359.9, val/100*360), r)}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>`; return g; };
+  let g = `<circle r="109" fill="none" stroke="var(--line)" stroke-width="1.2"/>`;
+  // anell global, acolorit per trams (vermell < 35, taronja < 60, verd)
+  g += `<circle r="100" fill="none" stroke="var(--grid)" stroke-width="12"/>`;
+  if(score > 0){ const end = Math.min(359.9, score/100*360);
+    [[0,35,"no"],[35,60,"marg"],[60,100,"ideal"]].forEach(([a,b,k]) => { const a0 = a/100*360, a1 = Math.min(end, b/100*360); if(a1 > a0) g += `<path d="${arc(a0, a1, 100)}" fill="none" stroke="var(--${k})" stroke-width="12" stroke-linecap="${a1 === end ? "round" : "butt"}"/>`; }); }
+  g += ring(s.wave ?? 0, 88, 6, "var(--wave-l)", "color-mix(in srgb, var(--wave-l) 14%, transparent)");
+  g += ring(s.wind ?? 0, 79, 6, "var(--ink)", "color-mix(in srgb, var(--ink) 10%, transparent)");
+  g += `<path d="M0 -107 l-6 -9 h12 z" fill="var(--ideal)"/>`;
+  const n10 = x => x==null ? "–" : String(Math.round(x/10));
+  g += `<text y="-22" text-anchor="middle" font-family="Rajdhani,sans-serif" font-weight="700" font-size="48" fill="var(--${v.k})">${n10(score)}<tspan font-size="18" fill="var(--muted)" dx="2">/10</tspan></text>`;
+  g += `<text y="-2" text-anchor="middle" font-family="Rajdhani,sans-serif" font-weight="700" font-size="16" fill="var(--${v.k})" letter-spacing=".5">${esc(v.t.toUpperCase())}</text>`;
+  const mini = (x, val, lbl, ic) => { const r = 16, cy = 32, a = (d) => { const t = (180 + d) * Math.PI/180; return [x + Math.cos(t)*r, cy + Math.sin(t)*r]; };
+    const [sx,sy] = a(0), [ex,ey] = a(Math.max(0.1, (val ?? 0)/100*180)), k = kOf(val);
+    return `<path d="M${x-r} ${cy} A${r} ${r} 0 0 1 ${x+r} ${cy}" fill="none" stroke="var(--grid)" stroke-width="4" stroke-linecap="round"/>`+
+      (val ? `<path d="M${sx.toFixed(1)} ${sy.toFixed(1)} A${r} ${r} 0 0 1 ${ex.toFixed(1)} ${ey.toFixed(1)}" fill="none" stroke="var(--${k})" stroke-width="4" stroke-linecap="round"/>` : "")+
+      `<g transform="translate(${x-7} ${cy-14})" fill="none" stroke="${ic === "w" ? "var(--ink)" : "var(--wave-l)"}" stroke-width="1.6" stroke-linecap="round">${ic === "w" ? `<path d="M1 4h7a2 2 0 1 0-2-2M1 7h10a2 2 0 1 1-2 2M1 10h5"/>` : `<path d="M0 8c2-3 4-3 6 0s4 3 6 0M0 11c2-3 4-3 6 0s4 3 6 0"/>`}</g>`+
+      `<text x="${x}" y="${cy+11}" text-anchor="middle" font-family="Rajdhani,sans-serif" font-weight="700" font-size="10" fill="var(--muted)" letter-spacing=".6">${lbl}</text>`+
+      `<text x="${x}" y="${cy+26}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-weight="700" font-size="14" fill="var(--ink)">${n10(val)}<tspan font-size="8" fill="var(--muted)">/10</tspan></text>`; };
+  g += mini(-32, s.wind, "VENT", "w") + mini(32, s.wave, "ONADES", "o");
+  return `<svg viewBox="-114 -120 228 230" role="img" aria-label="Idoneïtat ${esc(v.t)}: ${n10(score)} sobre 10; vent ${n10(s.wind)}, onades ${n10(s.wave)}">${g}</svg>`;
 }
 
 /* ---------- rosa dels vents ---------- */
+// Rosa dels vents amb histograma del dia: barres cada 10°, llargada = temps que ha bufat d'aquella direcció,
+// apilades per força del vent (verd fluix → vermell fort). El con blanc marca la direcció d'ara.
+const ROSE_BINS = [[4,"#1f8a3e"],[8,"#5bbf3a"],[12,"#c9d634"],[16,"#f2b52a"],[22,"#ee7a26"],[999,"#d8342b"]];
+function roseHist(recs){
+  const sec = Array.from({length:36}, () => ROSE_BINS.map(() => 0));
+  (recs || []).forEach(o => { if(o.dir==null || o.wind==null || o.wind < 0.5) return; const i = Math.round(norm(o.dir)/10) % 36; const b = ROSE_BINS.findIndex(x => o.wind < x[0]); sec[i][b]++; });
+  return sec;
+}
 function roseSvg(o){
-  const R = 80, P = (a, r) => [Math.sin(a*Math.PI/180)*r, -Math.cos(a*Math.PI/180)*r];
-  const wedge = (a0, a1, r0, r1, fill) => { const [x0,y0] = P(a0,r1), [x1,y1] = P(a1,r1), [x2,y2] = P(a1,r0), [x3,y3] = P(a0,r0);
-    return `<path d="M${x0} ${y0} A${r1} ${r1} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${r0} ${r0} 0 0 0 ${x3} ${y3} Z" fill="${fill}"/>`; };
+  const R = 100, ri = 38, P = (a, r) => [Math.sin(a*Math.PI/180)*r, -Math.cos(a*Math.PI/180)*r];
+  const wedge = (a0, a1, ra, rb, fill, extra) => { const [x0,y0] = P(a0,rb), [x1,y1] = P(a1,rb), [x2,y2] = P(a1,ra), [x3,y3] = P(a0,ra);
+    return `<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} A${rb} ${rb} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} L${x2.toFixed(1)} ${y2.toFixed(1)} A${ra} ${ra} 0 0 0 ${x3.toFixed(1)} ${y3.toFixed(1)} Z" fill="${fill}"${extra||""}/>`; };
   let g = `<circle r="${R}" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"/>`;
-  g += wedge(255, 375, 62, R, "var(--no-t)") + wedge(75, 195, 62, R, "var(--ideal-t)");
-  const [cx0,cy0] = P(COAST-90, R), [cx1,cy1] = P(COAST+90, R);
-  g += `<line x1="${cx0}" y1="${cy0}" x2="${cx1}" y2="${cy1}" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="3 3"/>`;
-  for(let a=0; a<360; a+=5){ const big = a%45===0, mid = a%15===0; const [x0,y0] = P(a, R), [x1,y1] = P(a, R-(big?10:mid?6:3));
-    g += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${big?"var(--ink)":"var(--muted)"}" stroke-width="${big?2:1}"/>`; }
-  WABBR.forEach((t,i) => { const [x,y] = P(i*45, R+12); g += `<text x="${x}" y="${y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="${i%2?"var(--muted)":"var(--ink)"}" font-family="Rajdhani,sans-serif" letter-spacing=".5">${t}</text>`; });
-  const needle = (d, fc) => { if(d==null) return "";
-    const [tx,ty] = P(d, R-6), [hx,hy] = P(d, 34), [lx,ly] = P(d-8, 48), [rx,ry] = P(d+8, 48);
-    return fc ? `<line x1="${tx}" y1="${ty}" x2="${hx}" y2="${hy}" stroke="var(--muted)" stroke-width="2" stroke-dasharray="4 3"/>`
-      : `<g class="needle"><line x1="${tx}" y1="${ty}" x2="${hx}" y2="${hy}" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><polygon points="${hx},${hy} ${lx},${ly} ${rx},${ry}" fill="currentColor"/></g>`; };
-  if(o.live && o.fcDir!=null) g += needle(o.fcDir, true);
-  g += needle(o.dir, false);
-  if(o.wdir!=null){ const [a,b] = P(o.wdir, R-1), [c1,d1] = P(o.wdir-5, R-12), [e,f] = P(o.wdir+5, R-12); g += `<polygon points="${a},${b} ${c1},${d1} ${e},${f}" fill="var(--sea)"/>`; }
-  g += `<circle r="31" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>`;
-  g += `<text y="4" text-anchor="middle" font-size="24" font-weight="700" fill="var(--ink)" font-family="IBM Plex Mono,monospace">${r0(o.wind)}</text>`;
-  g += `<text y="18" text-anchor="middle" font-size="9" font-weight="700" fill="var(--muted)" font-family="Rajdhani,sans-serif" letter-spacing="1">NUSOS</text>`;
-  return `<svg viewBox="-114 -110 228 220" role="img" aria-label="Vent de ${windName(o.dir)} a ${r0(o.wind)} nusos">${g}</svg>`;
+  for(let a=0; a<360; a+=45){ const [x0,y0] = P(a, ri), [x1,y1] = P(a, R-8); g += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`; }
+  // histograma
+  const H = o.hist, tot = H ? H.map(b => b.reduce((x,y)=>x+y,0)) : [], mx = Math.max(1, ...tot), L = R - 10 - ri;
+  if(H) H.forEach((bins, i) => { if(!tot[i]) return; let ra = ri + 1; const a0 = i*10 - 4, a1 = i*10 + 4;
+    bins.forEach((n, b) => { if(!n) return; const rb = ra + n/mx*L; g += wedge(a0, a1, ra, rb, ROSE_BINS[b][1]); ra = rb; }); });
+  // escala exterior
+  for(let a=0; a<360; a+=10){ const big = a%45===0, [x0,y0] = P(a, R), [x1,y1] = P(a, R-(big?9:4));
+    g += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${big?"var(--ink)":"var(--muted)"}" stroke-width="${big?2:1}"/>`; }
+  WABBR.forEach((t,i) => { const [x,y] = P(i*45, R+12); g += `<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${isOffshore(i*45) ? "var(--marg)" : "var(--sea)"}" font-family="Rajdhani,sans-serif" letter-spacing=".5">${t}</text>`; });
+  // direcció de l'onada (triangle blau a la vora) i con de la direcció del vent actual
+  if(o.wdir!=null){ const [a,b] = P(o.wdir, R-1), [c1,d1] = P(o.wdir-5, R-12), [e,f] = P(o.wdir+5, R-12); g += `<polygon points="${a.toFixed(1)},${b.toFixed(1)} ${c1.toFixed(1)},${d1.toFixed(1)} ${e.toFixed(1)},${f.toFixed(1)}" fill="var(--wave-l)"/>`; }
+  if(o.dir!=null){ const [x0,y0] = P(o.dir-11, R), [x1,y1] = P(o.dir+11, R), [xc,yc] = P(o.dir, ri-6);
+    g += `<g class="needle"><path d="M${xc.toFixed(1)} ${yc.toFixed(1)} L${x0.toFixed(1)} ${y0.toFixed(1)} A${R} ${R} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="var(--ink)" fill-opacity=".22" stroke="var(--ink)" stroke-opacity=".7" stroke-width="1.2"/></g>`; }
+  g += `<circle r="${ri-4}" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>`;
+  g += `<g transform="translate(-9 -27)" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round"><path d="M1 5h9a2.5 2.5 0 1 0-2.5-2.5M1 9h13a2.5 2.5 0 1 1-2.5 2.5M1 13h6"/></g>`;
+  g += `<text y="12" text-anchor="middle" font-size="26" font-weight="700" fill="var(--ink)" font-family="Rajdhani,sans-serif">${r0(o.wind)}<tspan font-size="11" fill="var(--muted)" dx="2">kn</tspan></text>`;
+  return `<svg viewBox="-130 -124 260 248" role="img" aria-label="Vent de ${windName(o.dir)} a ${r0(o.wind)} nusos, amb l'histograma de direccions d'avui">${g}</svg>`;
 }
 
 /* ---------- gràfic horari ---------- */
@@ -561,10 +592,10 @@ function renderNow(){
   $("src").className = "src"+(live?" live":"");
   $("src").innerHTML = `<span class="dot"></span>${live ? `${STATIONS[stKey].name} · fa ${mins} min` : `${STATIONS[stKey].name}: sense dades · model`}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M7 4l-4 4 4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>`;
   $("src").setAttribute("aria-label", "Estació: "+STATIONS[stKey].name+". Canvia d'estació");
-  $("gauge").innerHTML = gaugeSvg(s.score, v) + `<div class="cap"><span>${esc(DEFAULTS[act].name)}</span></div>`;
+  $("gauge").innerHTML = gaugeSvg(s, v) + `<div class="cap"><span>${esc(DEFAULTS[act].name)}</span></div>`;
   const kind = isOffshore(n.dir) ? "terral" : isOnshore(n.dir) ? "de mar" : "lateral";
-  $("rose").innerHTML = roseSvg({dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live}) +
-    `<div class="cap"><span><b style="color:var(--ink)">${windName(n.dir)}</b> ${r0(n.dir)}° · ${kind}</span>${live?`<span>— — model ${r0(fc.wind)} kn</span>`:""}</div>`;
+  $("rose").innerHTML = roseSvg({dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live, hist: OBS.key === stKey && OBS.recs && OBS.recs.length ? roseHist(OBS.recs) : null}) +
+    `<div class="cap"><span><b style="color:var(--ink)">${windName(n.dir)}</b> ${r0(n.dir)}° · ${kind}</span><span>${OBS.key === stKey && OBS.recs?.length ? (OBS.recs24h ? "Histograma: darreres 24 h" : "Histograma: avui") : ""}${live ? ` · previsió ${r0(fc.wind)} kn` : ""}</span></div>`;
   $("flags").innerHTML = s.flags.map(f => `<span class="flag">${esc(f)}</span>`).join("");
   const i = DATA.daily.time.indexOf(todayDate());
   $("stats").innerHTML =

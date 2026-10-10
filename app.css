@@ -483,3 +483,10 @@ tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--sel)}
 .view-panel #closeView{margin-top:12px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .model-pick select{width:100%}
+/* indicadors grans (idoneïtat amb vent/onades i rosa amb histograma): un sota l'altre al mòbil */
+@media (max-width:640px){
+  .now-grid{grid-template-columns:minmax(0,1fr);gap:4px}
+  .gauge svg{max-width:250px}
+  .rose svg{max-width:290px}
+  .gauge .cap{display:none}
+}
