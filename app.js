@@ -555,18 +555,19 @@ function renderInfo(){
     const hrs = a.periods.length === 4 ? "tot el dia" : a.periods.map(p => p.replace("-", "–")+" h").join(", ");
     parts.push(`<div class="info-row k-${pv.k}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/></svg>
       <span><b>${esc(a.tipus)} Meteocat · ${esc(a.meteor)}</b><br>${esc(a.llindar || "")} · ${when} ${esc(hrs)} · ${pv.t}${a.zones.includes("mar") ? " · zona de mar del Maresme" : " · Maresme"}</span></div>`); });
-  const f = INFO.flag, fresh = !!(f && f.at && new Date(f.at).toDateString() === new Date().toDateString()), fl = f && FLAG[f.color];
-  if(fresh && fl){
-    const extra = [f.reason, f.sea ? "mar "+f.sea : "", f.jelly.length ? "meduses: "+f.jelly.join(", ") : ""].filter(Boolean).join(" · ");
-    parts.push(`<div class="info-row k-${fl.k}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M6 4h12l-3 4 3 4H6z" fill="currentColor"/></svg>
-      <span><b>Bandera ${fl.t} · ${esc(f.beach)}</b> · ${new Date(f.at).toTimeString().slice(0,5)}${extra ? `<br>${esc(extra)}` : ""}</span></div>`);
-  }
-  const quiet = [];
-  if(INFO.ok.smp && !INFO.alerts.length) quiet.push("Sense avisos de Meteocat al Maresme");
-  if(!INFO.ok.smp) quiet.push("Avisos de Meteocat no disponibles ara");
-  if(!fresh) quiet.push(INFO.ok.flag ? "Bandera de bany: sense dades avui" + (f && fl ? ` (darrera: ${fl.t}, ${new Date(f.at).toLocaleDateString("ca",{day:"numeric",month:"short"})})` : "") : "Bandera de bany no disponible ara");
-  el.innerHTML = parts.join("") + (quiet.length ? `<div class="info-quiet">${quiet.map(esc).join(" · ")}</div>` : "");
+  el.innerHTML = parts.join("");   // només hi surten avisos actius
+  renderFlag();
 }
+// Bandera de bany: icona petita sota l'indicador (gris = sense dades d'avui). Tocant-la es veu el detall.
+function renderFlag(){
+  const el = $("gflag"); if(!el) return;
+  const f = INFO.flag, fresh = !!(f && f.at && new Date(f.at).toDateString() === new Date().toDateString()), fl = fresh && f && FLAG[f.color];
+  const col = fl ? `var(--${fl.k})` : "var(--muted)";
+  const txt = fl ? `Bandera ${fl.t} · ${f.beach} · ${new Date(f.at).toTimeString().slice(0,5)}` + [f.reason, f.sea ? "mar "+f.sea : "", f.jelly.length ? "meduses: "+f.jelly.join(", ") : ""].filter(Boolean).map(x => " · "+x).join("")
+    : (INFO.ok.flag ? "Bandera de bany: sense dades avui" + (f && FLAG[f.color] ? ` (darrera: ${FLAG[f.color].t}, ${new Date(f.at).toLocaleDateString("ca",{day:"numeric",month:"short"})})` : "") : "Bandera de bany: no disponible ara");
+  el.innerHTML = `<button type="button" class="gflag-b" aria-label="${esc(txt)}" title="${esc(txt)}" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 22V3" stroke="${col}" stroke-width="2.4" stroke-linecap="round"/><path d="M6 4h13l-3.5 4.5L19 13H6z" fill="${col}"${fl ? "" : ' fill-opacity=".45"'}/></svg></button><span class="gflag-t" hidden>${esc(txt)}</span>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest(".gflag-b"); if(!b) return; const t = b.nextElementSibling; t.hidden = !t.hidden; b.setAttribute("aria-expanded", String(!t.hidden)); });
 
 /* ---------- render ---------- */
 // Siluetes de les embarcacions: patí (casc doble, una vela), windsurf (taula i vela amb wishbone), Hobie Cat (catamarà amb major i floc)
@@ -592,10 +593,9 @@ function renderNow(){
   $("src").className = "src"+(live?" live":"");
   $("src").innerHTML = `<span class="dot"></span>${live ? `${STATIONS[stKey].name} · fa ${mins} min` : `${STATIONS[stKey].name}: sense dades · model`}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M7 4l-4 4 4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>`;
   $("src").setAttribute("aria-label", "Estació: "+STATIONS[stKey].name+". Canvia d'estació");
-  $("gauge").innerHTML = gaugeSvg(s, v) + `<div class="cap"><span>${esc(DEFAULTS[act].name)}</span></div>`;
+  $("gauge").innerHTML = gaugeSvg(s, v) + `<div class="gflag" id="gflag"></div>`; renderFlag();
   const kind = isOffshore(n.dir) ? "terral" : isOnshore(n.dir) ? "de mar" : "lateral";
-  $("rose").innerHTML = roseSvg({dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live, hist: OBS.key === stKey && OBS.recs && OBS.recs.length ? roseHist(OBS.recs) : null}) +
-    `<div class="cap"><span><b style="color:var(--ink)">${windName(n.dir)}</b> ${r0(n.dir)}° · ${kind}</span><span>${OBS.key === stKey && OBS.recs?.length ? (OBS.recs24h ? "Histograma: darreres 24 h" : "Histograma: avui") : ""}${live ? ` · previsió ${r0(fc.wind)} kn` : ""}</span></div>`;
+  $("rose").innerHTML = roseSvg({dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live, hist: OBS.key === stKey && OBS.recs && OBS.recs.length ? roseHist(OBS.recs) : null});
   $("flags").innerHTML = s.flags.map(f => `<span class="flag">${esc(f)}</span>`).join("");
   const i = DATA.daily.time.indexOf(todayDate());
   $("stats").innerHTML =

@@ -490,3 +490,8 @@ tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--sel)}
 :root[data-size="big"] .gauge .cap{display:none}
 :root[data-size="big"] .rose .cap{font-size:1rem}
 :root[data-size="big"] .bverdict{display:none}
+/* bandera de bany sota l'indicador */
+.gflag{align-self:flex-start;display:flex;align-items:center;gap:6px;min-height:22px;margin-top:-6px}
+.gflag-b{border:0;background:none;padding:2px;cursor:pointer;display:grid;place-items:center}
+.gflag-t{font-size:.74rem;font-weight:600;color:var(--muted);line-height:1.25}
+.info:empty{display:none}
