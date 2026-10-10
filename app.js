@@ -395,11 +395,21 @@ function gaugeSvg(s, v){
 /* ---------- rosa dels vents ---------- */
 // Rosa dels vents amb histograma del dia: barres cada 10°, llargada = temps que ha bufat d'aquella direcció,
 // apilades per força del vent (verd fluix → vermell fort). El con blanc marca la direcció d'ara.
-const ROSE_BINS = [[4,"#1f8a3e"],[8,"#5bbf3a"],[12,"#c9d634"],[16,"#f2b52a"],[22,"#ee7a26"],[999,"#d8342b"]];
-function roseHist(recs){
-  const sec = Array.from({length:36}, () => ROSE_BINS.map(() => 0));
-  (recs || []).forEach(o => { if(o.dir==null || o.wind==null || o.wind < 0.5) return; const i = Math.round(norm(o.dir)/10) % 36; const b = ROSE_BINS.findIndex(x => o.wind < x[0]); sec[i][b]++; });
+// Histograma: minuts de vent per direcció (sectors de 10°). Capa 0 = registrat a l'estació (ambre);
+// capes 1–3 = previsió de la resta del dia, pel codi de colors de l'embarcació (verd, taronja, vermell).
+const ROSE_LAYERS = ["var(--accent-2)","var(--ideal)","var(--marg)","var(--no)"];
+function roseHist(recs, fc){
+  const sec = Array.from({length:36}, () => [0,0,0,0]), add = (dir, layer, min) => { if(dir==null) return; sec[Math.round(norm(dir)/10) % 36][layer] += min; };
+  const R = (recs || []).filter(o => o.dir!=null && o.wind!=null && o.wind >= 0.5);
+  R.forEach((o, i) => { const nx = R[i+1] || R[i-1]; const step = nx ? Math.min(30, Math.max(1, Math.abs(nx.t - o.t)/60000)) : 10; add(o.dir, 0, step); });
+  const c = crit[act];
+  (fc || []).forEach(h => { if(h.wind==null || h.wind < 0.5) return; const l = lvWind(h.wind, c); add(h.dir, l === "ideal" ? 1 : l === "marg" ? 2 : 3, 60); });
   return sec;
+}
+// Hores de previsió d'avui que queden (de la propera hora fins a la posta)
+function roseForecast(){
+  if(!DATA) return []; const td = todayDate(), i = DATA.daily.time.indexOf(td), set = i >= 0 ? new Date(DATA.daily.sunset[i]).getHours() : 20, nh = +nowKey().slice(11,13);
+  const out = []; for(let h = nh + 1; h <= set; h++){ const p = DATA.hours[hourKey(td, h)]; if(p) out.push(p); } return out;
 }
 function roseSvg(o){
   const R = 100, ri = 38, P = (a, r) => [Math.sin(a*Math.PI/180)*r, -Math.cos(a*Math.PI/180)*r];
@@ -410,7 +420,7 @@ function roseSvg(o){
   // histograma
   const H = o.hist, tot = H ? H.map(b => b.reduce((x,y)=>x+y,0)) : [], mx = Math.max(1, ...tot), L = R - 10 - ri;
   if(H) H.forEach((bins, i) => { if(!tot[i]) return; let ra = ri + 1; const a0 = i*10 - 4, a1 = i*10 + 4;
-    bins.forEach((n, b) => { if(!n) return; const rb = ra + n/mx*L; g += wedge(a0, a1, ra, rb, ROSE_BINS[b][1]); ra = rb; }); });
+    let cum = 0; bins.forEach((n, b) => { if(!n) return; cum += n; const rb = ri + 1 + Math.sqrt(cum/mx)*L; g += wedge(a0, a1, ra, rb, ROSE_LAYERS[b], b ? "" : ' fill-opacity=".9"'); ra = rb; }); });   // escala d'arrel: les direccions amb poca estona també es veuen
   // escala exterior
   for(let a=0; a<360; a+=10){ const big = a%45===0, [x0,y0] = P(a, R), [x1,y1] = P(a, R-(big?9:4));
     g += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${big?"var(--ink)":"var(--muted)"}" stroke-width="${big?2:1}"/>`; }
@@ -620,7 +630,7 @@ function renderNow(){
   $("src").setAttribute("aria-label", "Estació: "+STATIONS[stKey].name+". Canvia d'estació");
   $("gauge").innerHTML = gaugeSvg(s, v) + `<div class="grow"><div class="gflag" id="gflag"></div>${v.sub ? `<span class="g-why k-${v.k}">${esc(v.sub)}</span>` : ""}</div>`; renderFlag();
   const kind = isOffshore(n.dir) ? "terral" : isOnshore(n.dir) ? "de mar" : "lateral";
-  $("rose").innerHTML = roseSvg({dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live, hist: OBS.key === stKey && OBS.recs && OBS.recs.length ? roseHist(OBS.recs) : null});
+  $("rose").innerHTML = roseSvg({dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live, hist: roseHist(OBS.key === stKey ? OBS.recs : [], roseForecast())});
   // sense repetir el que ja diu el motiu de sota l'indicador
   const said = (v.sub || "").toLowerCase().split(" · ");
   $("flags").innerHTML = s.flags.filter(f => !said.includes(f.toLowerCase()) && !(f === "Terral" && said.includes("terral fort"))).map(f => `<span class="flag${INFO_FLAGS.includes(f) ? " info" : ""}">${esc(f)}</span>`).join("");
