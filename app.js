@@ -558,6 +558,8 @@ function renderInfo(){
   el.innerHTML = parts.join("");   // només hi surten avisos actius
   renderFlag();
 }
+// Traços de la bandera, de l'editor d'icones (traç 1 = pal; la resta, farcit del color de la bandera)
+const FLAG_IC = ["M5 23L5 3","M5 3L19 4L18.5 7.5L19 13L5 12Z"];
 // Bandera de bany: icona petita sota l'indicador (gris = sense dades d'avui). Tocant-la es veu el detall.
 function renderFlag(){
   const el = $("gflag"); if(!el) return;
@@ -565,7 +567,7 @@ function renderFlag(){
   const col = fl ? `var(--${fl.k})` : "var(--muted)";
   const txt = fl ? `Bandera ${fl.t} · ${f.beach} · ${new Date(f.at).toTimeString().slice(0,5)}` + [f.reason, f.sea ? "mar "+f.sea : "", f.jelly.length ? "meduses: "+f.jelly.join(", ") : ""].filter(Boolean).map(x => " · "+x).join("")
     : (INFO.ok.flag ? "Bandera de bany: sense dades avui" + (f && FLAG[f.color] ? ` (darrera: ${FLAG[f.color].t}, ${new Date(f.at).toLocaleDateString("ca",{day:"numeric",month:"short"})})` : "") : "Bandera de bany: no disponible ara");
-  el.innerHTML = `<button type="button" class="gflag-b" aria-label="${esc(txt)}" title="${esc(txt)}" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 22V3" stroke="${col}" stroke-width="2.4" stroke-linecap="round"/><path d="M6 4h13l-3.5 4.5L19 13H6z" fill="${col}"${fl ? "" : ' fill-opacity=".45"'}/></svg></button><span class="gflag-t" hidden>${esc(txt)}</span>`;
+  el.innerHTML = `<button type="button" class="gflag-b" aria-label="${esc(txt)}" title="${esc(txt)}" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="${FLAG_IC[0]}" stroke="${col}" stroke-width="2.4"/>${FLAG_IC.slice(1).map(d => `<path d="${d}" fill="${col}" stroke="${col}" stroke-width="1"${fl ? "" : ' fill-opacity=".45"'}/>`).join("")}</svg></button><span class="gflag-t" hidden>${esc(txt)}</span>`;
 }
 document.addEventListener("click", e => { const b = e.target.closest && e.target.closest(".gflag-b"); if(!b) return; const t = b.nextElementSibling; t.hidden = !t.hidden; b.setAttribute("aria-expanded", String(!t.hidden)); });
 
