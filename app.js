@@ -459,7 +459,7 @@ function readout(k){
   const date = k.slice(0,10), h = +k.slice(11,13), p = hourAt(date, h); if(!p) return "";
   const c = crit[act], v = verdict(scoreHour(p, c)), d = new Date(date+"T12:00:00");
   const day = date === todayDate() ? "" : DAYS_L[d.getDay()]+" "+d.getDate()+" · ";
-  return `<span class="rd-h"><b>${day}${pad(h)}:00</b><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span>${p.obs ? `<small class="obs">mesurat</small>` : ""}</span>
+  return `<span class="rd-m">${p.obs ? "Mesurat" : esc(MODELS[p.src === "auto" ? "auto" : model].label)}${p.code != null ? wxIcon(p.code, 18) : ""}</span><span class="rd-h"><b>${day}${pad(h)}:00</b><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span>${p.obs ? `<small class="obs">mesurat</small>` : ""}</span>
     <span class="rd-v"><span>${arrow(p.dir,14)} Vent ${lvTxt(lvWind(p.wind,c), r0(p.wind)+" kn")} ${windAbbr(p.dir)}</span><span>Ratxa ${lvTxt(lvGust(p.gust,c), r0(p.gust)+" kn")}</span>
     <span>Onada ${lvTxt(lvWave(p.wave,c), r1(p.wave)+" m")}${p.hmax!=null ? ` <small>(màx ${p.hmaxE?"≈":""}${r1(p.hmax)})</small>` : ""}${p.tp!=null||p.per!=null ? ` · ${r0(p.tp ?? p.per)} s` : ""}</span></span>`;
 }
@@ -624,7 +624,7 @@ function renderNow(){
     return `<div class="sl k-${vv.k}${a.past?" past":""}"><div class="h">${sl.label}<span class="tag"><span class="vd"></span>${vv.t}</span></div>
       <div class="w">${arrow(a.dir,13)}${r0(a.wind)}<small>/${r0(a.gust)} kn</small></div><div class="o">${windAbbr(a.dir)} · ${r1(a.wave)} m</div></div>`; }).join("");
   const ol = $("outlook");
-  ol.innerHTML = `<div class="card-h" style="margin-bottom:6px"><span class="lbl">Avui · toca o arrossega el gràfic</span><span class="muted" style="display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700">${esc(MODELS[model].label)}${wxIcon(fc.code,18)}</span></div>
+  ol.innerHTML = `<div class="card-h" style="margin-bottom:6px"><span class="lbl">Avui</span></div>
     <div class="slots">${slots}</div><div class="hc-read"></div><div class="chart">${hourChart(td, 7, 21, true, chartW(ol))}</div>${chartLegend(true)}`;
   applySel();
 }

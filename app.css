@@ -495,3 +495,5 @@ tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--sel)}
 .gflag-b{border:0;background:none;padding:2px;cursor:pointer;display:grid;place-items:center}
 .gflag-t{font-size:.74rem;font-weight:600;color:var(--muted);line-height:1.25}
 .info:empty{display:none}
+.hc-read{position:relative;padding-right:96px}
+.hc-read .rd-m{position:absolute;top:7px;right:10px;display:inline-flex;align-items:center;gap:6px;font-size:.76rem;font-weight:700;color:var(--muted)}
