@@ -621,7 +621,9 @@ function renderNow(){
   $("gauge").innerHTML = gaugeSvg(s, v) + `<div class="grow"><div class="gflag" id="gflag"></div>${v.sub ? `<span class="g-why k-${v.k}">${esc(v.sub)}</span>` : ""}</div>`; renderFlag();
   const kind = isOffshore(n.dir) ? "terral" : isOnshore(n.dir) ? "de mar" : "lateral";
   $("rose").innerHTML = roseSvg({dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live, hist: OBS.key === stKey && OBS.recs && OBS.recs.length ? roseHist(OBS.recs) : null});
-  $("flags").innerHTML = s.flags.map(f => `<span class="flag${INFO_FLAGS.includes(f) ? " info" : ""}">${esc(f)}</span>`).join("");
+  // sense repetir el que ja diu el motiu de sota l'indicador
+  const said = (v.sub || "").toLowerCase().split(" · ");
+  $("flags").innerHTML = s.flags.filter(f => !said.includes(f.toLowerCase()) && !(f === "Terral" && said.includes("terral fort"))).map(f => `<span class="flag${INFO_FLAGS.includes(f) ? " info" : ""}">${esc(f)}</span>`).join("");
   const i = DATA.daily.time.indexOf(todayDate());
   $("stats").innerHTML =
     stat("gust", "Ratxa", lvTxt(lvGust(n.gust,c), r0(n.gust)), "kn", n.gust!=null&&n.wind!=null ? "+"+r0(n.gust-n.wind)+" sobre la mitjana" : "") +
