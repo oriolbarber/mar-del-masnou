@@ -521,3 +521,11 @@ details.vp-sec[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
 .sl{position:relative}
 .sl .sl-wx{position:absolute;right:5px;bottom:5px;line-height:0;color:var(--ink);opacity:.85}
 .sl .o{padding-right:17px}
+/* textos llargs: no trencar paraula a paraula en columnes estretes */
+.hc-read .rd-h{white-space:nowrap;flex-wrap:nowrap}
+.hc-read .rd-why{flex-basis:100%;order:0;font-size:.8rem;font-weight:700;color:var(--muted);margin-top:-2px}
+.hc-read .rd-v{flex-basis:100%}
+.sl .h .tag{white-space:normal;line-height:1.1;text-align:left}
+.sl .h{align-items:flex-start}
+.gfoot,.grow{min-width:0}
+.g-why,.gwhy{overflow-wrap:anywhere}

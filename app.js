@@ -523,7 +523,7 @@ function readout(k){
   const date = k.slice(0,10), h = +k.slice(11,13), p = hourAt(date, h); if(!p) return "";
   const c = crit[act], v = verdict(scoreHour(p, c)), d = new Date(date+"T12:00:00");
   const day = date === todayDate() ? "" : DAYS_L[d.getDay()]+" "+d.getDate()+" · ";
-  return `<span class="rd-m">${p.obs ? "Mesurat" : esc((MODELS[p.src] || MODELS[model]).label)}${p.code != null ? wxIcon(p.code, 18) : ""}</span><span class="rd-h"><b>${day}${pad(h)}:00</b><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span>${v.sub ? `<small class="why">${esc(v.sub)}</small>` : ""}${p.obs ? `<small class="obs">mesurat</small>` : ""}</span>
+  return `<span class="rd-m">${p.obs ? "Mesurat" : esc((MODELS[p.src] || MODELS[model]).label)}${p.code != null ? wxIcon(p.code, 18) : ""}</span><span class="rd-h"><b>${day}${pad(h)}:00</b><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span></span>${v.sub ? `<span class="rd-why">${esc(v.sub)}</span>` : ""}
     <span class="rd-v"><span>${arrow(p.dir,14)} Vent ${lvTxt(lvWind(p.wind,c), r0(p.wind)+" kn")} ${windAbbr(p.dir)}</span><span>Ratxa ${lvTxt(lvGust(p.gust,c), r0(p.gust)+" kn")}</span>
     <span>Onada ${lvTxt(lvWave(p.wave,c), r1(p.wave)+" m")}${p.hmax!=null ? ` <small>(màx ${p.hmaxE?"≈":""}${r1(p.hmax)})</small>` : ""}${p.tp!=null||p.per!=null ? ` · ${r0(p.tp ?? p.per)} s` : ""}</span></span>`;
 }
