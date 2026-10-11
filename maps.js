@@ -72,5 +72,60 @@ $("windySeg").addEventListener("click", e => { const b = e.target.closest("butto
 $("radarPlay").addEventListener("click", () => rvPlay(!rvTimer));
 $("radarSlider").addEventListener("input", e => { rvPlay(false); rvShow(+e.target.value); });
 $("radarPlay").innerHTML = PLAY_IC;
-window.addEventListener("mm-view", e => { if(e.detail === "map") showMapKind(mapKind); else { rvPlay(false); $("camFrame").removeAttribute("src"); } });
+window.addEventListener("mm-view", e => { if(e.detail === "map") showMapKind(mapKind); else { rvPlay(false); camClose(); $("camFrame").removeAttribute("src"); } });
 document.addEventListener("visibilitychange", () => { if(document.visibilityState !== "visible") rvPlay(false); });
+
+/* ---------- webcam a pantalla completa, girada i amb zoom ---------- */
+// L'iframe de la webcam és d'un altre web: no podem tocar el vídeo, però sí fer gran i ampliar el marc sencer.
+// Una capa transparent a sobre recull els gestos (pessigar, arrossegar, doble toc) quan és a pantalla completa.
+const CAM = {on:false, s:1, tx:0, ty:0, pts:new Map(), pinch:null, lastTap:0};
+function camApply(){
+  const f = $("camFrame"), w = f.offsetWidth, h = f.offsetHeight;
+  CAM.s = Math.min(5, Math.max(1, CAM.s));
+  const mx = (CAM.s - 1) * w / 2, my = (CAM.s - 1) * h / 2;
+  CAM.tx = Math.min(mx, Math.max(-mx, CAM.tx)); CAM.ty = Math.min(my, Math.max(-my, CAM.ty));
+  f.style.transform = CAM.s === 1 ? "" : `translate(${CAM.tx}px, ${CAM.ty}px) scale(${CAM.s})`;
+}
+// zoom mantenint quiet el punt (px, py) relatiu al centre de l'iframe
+function camZoomAt(s2, px, py){ const k = s2 / CAM.s; CAM.tx = px - (px - CAM.tx) * k; CAM.ty = py - (py - CAM.ty) * k; CAM.s = s2; camApply(); }
+function camRel(e){ const r = $("camFrame").getBoundingClientRect(); return [e.clientX - (r.left + r.width/2) + CAM.tx, e.clientY - (r.top + r.height/2) + CAM.ty]; }
+async function camOpen(){
+  CAM.on = true; CAM.s = 1; CAM.tx = CAM.ty = 0; const box = $("camBox");
+  box.classList.add("cam-max"); document.body.classList.add("cam-open"); $("camHint").hidden = false; setTimeout(() => { $("camHint").hidden = true; }, 4000);
+  try{ if(box.requestFullscreen) await box.requestFullscreen({navigationUI:"hide"}); else if(box.webkitRequestFullscreen) box.webkitRequestFullscreen(); }catch(e){}
+  try{ await screen.orientation.lock("landscape"); }catch(e){}   // Android: gira sol; on no es pot, n'hi ha prou de girar el mòbil
+  setTimeout(camApply, 300);
+}
+function camClose(){
+  if(!CAM.on) return; CAM.on = false; CAM.s = 1; CAM.tx = CAM.ty = 0; camApply();
+  $("camBox").classList.remove("cam-max"); document.body.classList.remove("cam-open");
+  try{ screen.orientation.unlock(); }catch(e){}
+  try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
+}
+$("camMax").addEventListener("click", camOpen);
+$("camClose").addEventListener("click", camClose);
+$("camZoomIn").addEventListener("click", () => camZoomAt(CAM.s * 1.5, CAM.tx, CAM.ty));
+$("camZoomOut").addEventListener("click", () => camZoomAt(CAM.s / 1.5, CAM.tx, CAM.ty));
+document.addEventListener("fullscreenchange", () => { if(!document.fullscreenElement && CAM.on) camClose(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && CAM.on) camClose(); });
+addEventListener("resize", () => { if(CAM.on) camApply(); });
+const ct = $("camTouch");
+ct.addEventListener("pointerdown", e => {
+  ct.setPointerCapture(e.pointerId); CAM.pts.set(e.pointerId, [e.clientX, e.clientY]);
+  if(CAM.pts.size === 2){ const [a, b] = [...CAM.pts.values()]; CAM.pinch = {d: Math.hypot(a[0]-b[0], a[1]-b[1]), s: CAM.s, mid: [(a[0]+b[0])/2, (a[1]+b[1])/2], tx: CAM.tx, ty: CAM.ty}; }
+  if(CAM.pts.size === 1){ const now = Date.now();
+    if(now - CAM.lastTap < 300){ const [px, py] = camRel(e); camZoomAt(CAM.s > 1.2 ? 1 : 2.5, CAM.s > 1.2 ? 0 : px, CAM.s > 1.2 ? 0 : py); if(CAM.s === 1){ CAM.tx = CAM.ty = 0; camApply(); } CAM.lastTap = 0; }
+    else CAM.lastTap = now; }
+});
+ct.addEventListener("pointermove", e => {
+  const prev = CAM.pts.get(e.pointerId); if(!prev) return; CAM.pts.set(e.pointerId, [e.clientX, e.clientY]);
+  if(CAM.pts.size >= 2 && CAM.pinch){ const [a, b] = [...CAM.pts.values()], d = Math.hypot(a[0]-b[0], a[1]-b[1]), mid = [(a[0]+b[0])/2, (a[1]+b[1])/2];
+    const r = $("camFrame").getBoundingClientRect(), p0 = CAM.pinch, s2 = Math.min(5, Math.max(1, p0.s * d / p0.d)), k = s2 / p0.s;
+    const cx = r.left + r.width/2 - CAM.tx, cy = r.top + r.height/2 - CAM.ty;   // centre sense transformar
+    const px = p0.mid[0] - cx, py = p0.mid[1] - cy;
+    CAM.s = s2; CAM.tx = px - (px - p0.tx) * k + (mid[0] - p0.mid[0]); CAM.ty = py - (py - p0.ty) * k + (mid[1] - p0.mid[1]); camApply(); }
+  else if(CAM.pts.size === 1 && CAM.s > 1){ CAM.tx += e.clientX - prev[0]; CAM.ty += e.clientY - prev[1]; camApply(); }
+});
+const ctUp = e => { CAM.pts.delete(e.pointerId); if(CAM.pts.size < 2) CAM.pinch = null; };
+ct.addEventListener("pointerup", ctUp); ct.addEventListener("pointercancel", ctUp);
+ct.addEventListener("wheel", e => { e.preventDefault(); const [px, py] = camRel(e); camZoomAt(CAM.s * (e.deltaY < 0 ? 1.2 : 1/1.2), px, py); }, {passive:false});

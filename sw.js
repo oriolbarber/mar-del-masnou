@@ -1,6 +1,6 @@
 // Mar del Masnou: guarda l'app per obrir-la sense connexió. Les dades meteo sempre van a la xarxa.
-const CACHE = "mar-masnou-v62";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./app.css?v=62", "./app.js?v=62", "./trip.js?v=62", "./maps.js?v=62", "./windmap.js?v=62",
+const CACHE = "mar-masnou-v63";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./app.css?v=63", "./app.js?v=63", "./trip.js?v=63", "./maps.js?v=63", "./windmap.js?v=63",
   "./icons/logo.svg?v=3", "./icons/icon-192.png?v=3", "./icons/icon-512.png?v=3", "./icons/apple-touch-icon.png?v=3"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, {cache:"reload"})))).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => {

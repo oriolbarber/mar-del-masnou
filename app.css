@@ -687,3 +687,17 @@ body.riding{overflow:hidden}
 #delTrip,#discardTrip{margin-top:10px}
 .ride-b.save{background:var(--ideal);border-color:var(--ideal);color:#fff}
 .ride.eco .ride-b.save{background:#000;color:#5fe0a0;border-color:#5fe0a0}
+
+/* webcam gran */
+.cam-max-b{min-height:38px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;font-size:.88rem}
+#camBox{position:relative;overflow:hidden}
+.cam-touch,.cam-ui,.cam-hint{display:none}
+#camFrame{transform-origin:center center;will-change:transform}
+.frame.cam.cam-max{position:fixed;inset:0;z-index:4000;width:100vw;height:100dvh;max-width:none;aspect-ratio:auto;border-radius:0;border:0;background:#000;display:grid;place-items:center;margin:0}
+.frame.cam.cam-max #camFrame{width:min(100vw, calc(100dvh * 16 / 9));height:auto;aspect-ratio:16/9;border:0}
+.cam-max .cam-touch{display:block;position:absolute;inset:0;z-index:2;touch-action:none;cursor:grab}
+.cam-max .cam-ui{display:flex;gap:10px;position:absolute;z-index:3;top:calc(10px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px))}
+.cam-ub{width:52px;height:52px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;font-size:1.6rem;font-weight:700;line-height:1;cursor:pointer;backdrop-filter:blur(4px)}
+.cam-max .cam-hint{display:block;position:absolute;z-index:3;bottom:calc(14px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff;padding:8px 14px;border-radius:999px;font-weight:600;font-size:.9rem;white-space:nowrap;pointer-events:none}
+.cam-max .cam-hint[hidden]{display:none}
+body.cam-open{overflow:hidden}
