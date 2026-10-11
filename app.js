@@ -182,11 +182,15 @@ function build(fc, ma){
 const MODELS = {
   arome: {label:"AROME", api:"meteofrance_seamless", long:"AROME (Météo-France)"},
   auto:  {label:"Combinat", api:null, long:"Combinat d'Open-Meteo (barreja els models que funcionen millor a cada zona i termini)"},
-  ecmwf: {label:"ECMWF", api:"ecmwf_ifs025", long:"ECMWF (centre europeu)"},
+  ecmwf: {label:"ECMWF", api:"ecmwf_ifs", long:"ECMWF IFS 9 km (centre europeu)"},
+  icon:  {label:"ICON", api:"icon_eu", long:"ICON-EU (servei alemany, DWD)"},
+  ukmo:  {label:"UKMO", api:"ukmo_global_deterministic_10km", long:"UKMO Global 10 km (Met Office britànic)"},
   opt:   {label:"Optimista", api:null, long:"Per a cada hora, el model més favorable"},
   pes:   {label:"Pessimista", api:null, long:"Per a cada hora, el model més desfavorable"}
 };
 // Preferència: «best» = el model que més encerta avui respecte l'estació (per defecte), o un model fix triat per l'usuari
+// Models que es demanen a part i es comparen amb l'estació: [clau, nom a l'API d'Open-Meteo]
+const ALT_MODELS = ["arome","ecmwf","icon","ukmo"].map(k => [k, MODELS[k].api]);
 let modelPref = store.get("mm_model_pref") || "best"; if(modelPref !== "best" && !MODELS[modelPref]) modelPref = "best";
 let model = "auto";
 function pickModel(){
@@ -196,11 +200,11 @@ function pickModel(){
   const best = errs.sort((a, b) => a.mae - b.mae)[0].k; store.set("mm_model_best", best); return best;
 }
 const URL_ALT = `https://api.open-meteo.com/v1/forecast?latitude=${LOC.lat}&longitude=${LOC.lon}`+
-  "&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&models=meteofrance_seamless,ecmwf_ifs025"+
+  "&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&models="+ALT_MODELS.map(m => m[1]).join(",")+
   "&wind_speed_unit=kn&timezone=Europe%2FMadrid&forecast_days=7";
 function parseAlt(j){
   if(!j || !j.hourly) return null; const H = j.hourly, out = {};
-  ["meteofrance_seamless","ecmwf_ifs025"].forEach(m => { const o = {};
+  ALT_MODELS.forEach(([, m]) => { const o = {};
     H.time.forEach((t,i) => { const w = H["wind_speed_10m_"+m]?.[i]; if(w == null) return;
       o[t] = {wind:w, gust:H["wind_gusts_10m_"+m]?.[i] ?? null, dir:H["wind_direction_10m_"+m]?.[i] ?? null, temp:H["temperature_2m_"+m]?.[i] ?? null}; });
     out[m] = o; });
@@ -214,7 +218,7 @@ function applyModel(){
   const withAlt = (b, a, k) => Object.assign({}, b, {wind:a.wind, gust:a.gust ?? b.gust, dir:a.dir ?? b.dir, temp:a.temp ?? b.temp, src:k});
   if(model === "opt" || model === "pes"){
     // Optimista / pessimista: per a cada hora, el model que dona millor / pitjor valoració per a l'embarcació triada
-    const c = crit[act], alts = [["arome", DATA.alt?.meteofrance_seamless], ["ecmwf", DATA.alt?.ecmwf_ifs025]];
+    const c = crit[act], alts = ALT_MODELS.map(([k, m]) => [k, DATA.alt?.[m]]);
     for(const t in DATA.base){ const b = DATA.base[t]; let best = Object.assign({}, b, {src:"auto"}), bs = scoreHour(best, c).score ?? -1;
       alts.forEach(([k, src]) => { const a = src && src[t]; if(!a) return; const h = withAlt(b, a, k), sc = scoreHour(h, c).score ?? -1;
         if(model === "opt" ? sc > bs : sc < bs){ best = h; bs = sc; } });
@@ -274,7 +278,7 @@ async function loadBuoy(){
 // Error mitjà del vent previst respecte l'estació en les hores ja passades d'avui
 function modelErrors(){
   if(!DATA || !DATA.base || OBS.key !== stKey) return [];
-  const rows = [["auto", DATA.base], ["arome", DATA.alt?.meteofrance_seamless], ["ecmwf", DATA.alt?.ecmwf_ifs025]];
+  const rows = [["auto", DATA.base], ...ALT_MODELS.map(([k, m]) => [k, DATA.alt?.[m]])];
   return rows.map(([k, src]) => { let sum = 0, n = 0;
     for(const t in OBS.hours){ if(t >= nowKey()) continue; const o = OBS.hours[t], f = src && src[t]; if(o.wind != null && f && f.wind != null){ sum += Math.abs(o.wind - f.wind); n++; } }
     return {k, mae: n ? sum/n : null, n}; }).filter(x => x.mae != null);
@@ -749,8 +753,8 @@ function renderModelBox(errs, bestE){
   $("peekModel").textContent = modelPref === "best" ? "El que més encerta · " + MODELS[model].label : MODELS[modelPref].label;
   const opt = (v, t) => `<option value="${v}"${modelPref === v ? " selected" : ""}>${t}</option>`;
   $("modelBox").innerHTML = `<label class="model-pick"><span class="sr">Model</span>
-      <select id="modelSel">${opt("best", "El que més encerta avui" + (modelPref === "best" ? ` (${MODELS[model].label})` : ""))}${opt("opt","Optimista (el model més favorable)")}${opt("pes","Pessimista (el model més desfavorable)")}${opt("arome","AROME")}${opt("auto","Combinat")}${opt("ecmwf","ECMWF")}</select></label>
-    ${errs.length ? `<div class="model-err-row"><span class="lbl">Error d'avui vs. estació ${esc(STATIONS[stKey].name)}</span>${errs.map(e => `<span class="${e.mae === bestE ? "best" : ""}${e.k === model ? " cur" : ""}">${esc(MODELS[e.k].label)} <b>${r1(e.mae)} kn</b></span>`).join("")}</div>` : `<p class="note">Encara no hi ha prou hores mesurades avui per comparar els models.</p>`}`;
+      <select id="modelSel">${opt("best", "El que més encerta avui" + (modelPref === "best" ? ` (${MODELS[model].label})` : ""))}${opt("opt","Optimista (el model més favorable)")}${opt("pes","Pessimista (el model més desfavorable)")}${opt("arome","AROME")}${opt("icon","ICON")}${opt("ecmwf","ECMWF")}${opt("ukmo","UKMO")}${opt("auto","Combinat")}</select></label>
+    ${errs.length ? `<div class="model-err-row"><span class="lbl">Error d'avui vs. estació ${esc(STATIONS[stKey].name)}</span>${[...errs].sort((x, y) => x.mae - y.mae).map(e => `<span class="${e.mae === bestE ? "best" : ""}${e.k === model ? " cur" : ""}">${esc(MODELS[e.k].label)} <b>${r1(e.mae)} kn</b></span>`).join("")}</div>` : `<p class="note">Encara no hi ha prou hores mesurades avui per comparar els models.</p>`}`;
 }
 function dayName(date, i){ const d = new Date(date+"T12:00:00"); return {name: i===0 ? "Avui" : i===1 ? "Demà" : DAYS_L[d.getDay()], dm: d.getDate()+" "+MONTHS[d.getMonth()]}; }
 function renderWeek(){

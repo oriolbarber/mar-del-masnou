@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=58">
+<link rel="stylesheet" href="app.css?v=59">
 </head>
 <body>
 <div class="app">
@@ -58,7 +58,7 @@
       <div class="vp-info" id="iModel" hidden>
         <p><b>El que més encerta avui</b>: compara les hores ja passades d'avui amb el vent mesurat a l'estació i fa servir el model que s'hi ha acostat més. Calen 3 hores mesurades; abans, fa servir el guanyador de l'últim cop.</p>
         <p><b>Optimista</b> i <b>Pessimista</b>: per a cada hora, agafa el model que dona les condicions més favorables o més desfavorables per a l'embarcació triada. Si tots dos diuen el mateix, la previsió és fiable; si són molt diferents, hi ha dubte.</p>
-        <p><b>AROME</b>: model de Météo-France d'alta resolució (≈1,3 km), molt detallat a la costa; arriba a 2–4 dies. <b>ECMWF</b>: model del centre europeu (≈9–25 km), el més fiable a mitjà termini. <b>Combinat</b>: la barreja que fa Open-Meteo dels models que funcionen millor a cada zona i termini.</p>
+        <p><b>AROME</b>: model de Météo-France d'alta resolució (≈1,3 km), molt detallat a la costa; arriba a 2–4 dies. <b>ICON</b>: model europeu del servei alemany (DWD, ≈7 km), molt bo amb el vent; arriba a 5 dies. <b>ECMWF</b>: model del centre europeu (9 km), el més fiable a mitjà termini. <b>UKMO</b>: model global del Met Office britànic (10 km). <b>Combinat</b>: la barreja que fa Open-Meteo dels models que funcionen millor a cada zona i termini.</p>
         <p>L'<b>error d'avui</b> és la diferència mitjana entre el vent previst i el mesurat, en nusos: com més baix, millor.</p>
       </div></div>
     </div>
@@ -276,9 +276,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=58"></script>
-<script src="trip.js?v=58"></script>
-<script src="maps.js?v=58"></script>
-<script src="windmap.js?v=58"></script>
+<script src="app.js?v=59"></script>
+<script src="trip.js?v=59"></script>
+<script src="maps.js?v=59"></script>
+<script src="windmap.js?v=59"></script>
 </body>
 </html>
