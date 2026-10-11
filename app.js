@@ -459,7 +459,7 @@ function roseSvg(o){
   // direcció de l'onada (triangle blau a la vora) i con de la direcció del vent actual
   if(o.wdir!=null){ const [a,b] = P(o.wdir, R-1), [c1,d1] = P(o.wdir-5, R-12), [e,f] = P(o.wdir+5, R-12); g += `<polygon points="${a.toFixed(1)},${b.toFixed(1)} ${c1.toFixed(1)},${d1.toFixed(1)} ${e.toFixed(1)},${f.toFixed(1)}" fill="var(--wave-l)"/>`; }
   if(o.dir!=null){ const [x0,y0] = P(o.dir-11, R), [x1,y1] = P(o.dir+11, R), [xc,yc] = P(o.dir, ri-6);
-    g += `<g class="needle"><path d="M${xc.toFixed(1)} ${yc.toFixed(1)} L${x0.toFixed(1)} ${y0.toFixed(1)} A${R} ${R} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="var(--ink)" fill-opacity=".22" stroke="var(--ink)" stroke-opacity=".7" stroke-width="1.2"/></g>`; }
+    g += `<g class="needle"><path d="M${xc.toFixed(1)} ${yc.toFixed(1)} L${x0.toFixed(1)} ${y0.toFixed(1)} A${R} ${R} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${o.k ? `var(--${o.k})` : "var(--ink)"}" fill-opacity=".38" stroke="${o.k ? `var(--${o.k})` : "var(--ink)"}" stroke-width="2"/></g>`; }
   g += `<circle r="${ri-4}" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>`;
   g += `<g transform="translate(-9 -27)" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round"><path d="M1 5h9a2.5 2.5 0 1 0-2.5-2.5M1 9h13a2.5 2.5 0 1 1-2.5 2.5M1 13h6"/></g>`;
   g += `<text y="12" text-anchor="middle" font-size="26" font-weight="700" fill="var(--ink)" font-family="Rajdhani,sans-serif">${r0(o.wind)}<tspan font-size="11" fill="var(--muted)" dx="2">kn</tspan></text>`;
@@ -661,7 +661,7 @@ function renderNow(){
   $("src").setAttribute("aria-label", "Estació: "+STATIONS[stKey].name+". Canvia d'estació");
   $("gauge").innerHTML = gaugeSvg(s, v) + `<div class="grow"><div class="gflag" id="gflag"></div>${v.sub ? `<span class="g-why k-${v.k}">${esc(v.sub)}</span>` : ""}</div>`; renderFlag();
   const kind = isOffshore(n.dir) ? "terral" : isOnshore(n.dir) ? "de mar" : "lateral";
-  $("rose").innerHTML = roseSvg({dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live, hist: roseHist(OBS.key === stKey ? OBS.recs : [], roseForecast())});
+  $("rose").innerHTML = roseSvg({k: lvWind(n.wind, c), dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live, hist: roseHist(OBS.key === stKey ? OBS.recs : [], roseForecast())});
   // sense repetir el que ja diu el motiu de sota l'indicador
   const said = (v.sub || "").toLowerCase().split(" · "), FW = {"Racheig":"vent racheig","Probable pluja":"pluja probable","Terral":"terral"};
   $("flags").innerHTML = s.flags.filter(f => { const w = FW[f] || f.toLowerCase(); return !said.includes(w) && !(f === "Terral" && said.includes("terral fort")); }).map(f => `<span class="flag${INFO_FLAGS.includes(f) ? " info" : ""}">${esc(f)}</span>`).join("");
