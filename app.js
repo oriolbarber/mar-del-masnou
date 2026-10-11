@@ -444,6 +444,7 @@ function roseForecast(){
 }
 // icona d'onada (dibuixada a l'editor d'icones, graella 24×24)
 const WAVE_IC = ["M4 10.5C6 8 3 5.5 7 9C9 11 10.5 11 12 9C13.5 7 9.5 5 16.5 9C18 10 19.5 11 18 10","M4 17C6.5 13.5 3 12 7.5 15.5C9 17 10.5 17 12 15C13.5 13 10 11.5 16.5 15C18 16 19.5 17 16.5 15"];
+const waveIc = sz => `<svg class="wave-ic" width="${sz}" height="${sz}" viewBox="2 3 18 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${WAVE_IC.map(d => `<path d="${d}"/>`).join("")}</svg>`;
 function roseSvg(o){
   const R = 100, ri = 38, P = (a, r) => [Math.sin(a*Math.PI/180)*r, -Math.cos(a*Math.PI/180)*r];
   const wedge = (a0, a1, ra, rb, fill, extra) => { const [x0,y0] = P(a0,rb), [x1,y1] = P(a1,rb), [x2,y2] = P(a1,ra), [x3,y3] = P(a0,ra);
@@ -760,9 +761,9 @@ function renderWeek(){
     const domDir = aggs.filter(Boolean).sort((a,b)=>b.wind-a.wind)[0]?.dir;
     const open = openDay === date;
     html += `<button type="button" class="wrow" data-day="${date}" aria-expanded="${open}" aria-label="${dn.name} ${dn.dm}: mostra les hores">
-      <span class="d"><b>${dn.name}</b><span>${dn.dm} · ${r0(D.temperature_2m_min[i])}–${r0(D.temperature_2m_max[i])}°</span></span>
+      <span class="d"><b>${dn.name}</b><span>${dn.dm} · <i>${r0(D.temperature_2m_min[i])}–${r0(D.temperature_2m_max[i])}°</i></span></span>
       <span>${wxIcon(D.weather_code[i],20)}</span><span class="pills">${pills}</span>
-      <span class="wr">${ws.length?r0(Math.min(...ws))+"–"+r0(Math.max(...ws)):"–"} kn<small>${windAbbr(domDir)} · ${wv.length?r1(Math.max(...wv)):"–"} m</small></span>
+      <span class="wr"><span class="wr-w">${arrow(domDir,13)}<em>${windAbbr(domDir)}</em><b>${ws.length?r0(Math.min(...ws))+"–"+r0(Math.max(...ws)):"–"}</b><small>kn</small></span><span class="wr-o">${waveIc(14)}<b>${wv.length?Math.max(...wv).toFixed(1).replace(".",","):"–"}</b><small>m</small></span></span>
       <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>`;
     if(open) html += `<div class="wdetail"><div class="hc-read"></div><div class="chart">${hourChart(date, 7, 21, true, chartW($("week")) - 8)}</div>${chartLegend(true)}</div>`;
   });
