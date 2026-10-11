@@ -456,14 +456,18 @@ function roseSvg(o){
   for(let a=0; a<360; a+=10){ const big = a%45===0, [x0,y0] = P(a, R), [x1,y1] = P(a, R-(big?9:4));
     g += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${big?"var(--ink)":"var(--muted)"}" stroke-width="${big?2:1}"/>`; }
   WABBR.forEach((t,i) => { const [x,y] = P(i*45, R+12); g += `<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${isOffshore(i*45) ? "var(--marg)" : "var(--sea)"}" font-family="Rajdhani,sans-serif" letter-spacing=".5">${t}</text>`; });
-  // direcció de l'onada (triangle blau a la vora) i con de la direcció del vent actual
-  if(o.wdir!=null){ const [a,b] = P(o.wdir, R-1), [c1,d1] = P(o.wdir-5, R-12), [e,f] = P(o.wdir+5, R-12); g += `<polygon points="${a.toFixed(1)},${b.toFixed(1)} ${c1.toFixed(1)},${d1.toFixed(1)} ${e.toFixed(1)},${f.toFixed(1)}" fill="var(--wave-l)"/>`; }
+  // con de la direcció del vent actual (l'onada es dibuixa al final, per fora de la circumferència)
   if(o.dir!=null){ const [x0,y0] = P(o.dir-11, R), [x1,y1] = P(o.dir+11, R), [xc,yc] = P(o.dir, ri-6);
     g += `<g class="needle"><path d="M${xc.toFixed(1)} ${yc.toFixed(1)} L${x0.toFixed(1)} ${y0.toFixed(1)} A${R} ${R} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${o.k ? `var(--${o.k})` : "var(--ink)"}" fill-opacity=".38" stroke="${o.k ? `var(--${o.k})` : "var(--ink)"}" stroke-width="2"/></g>`; }
   g += `<circle r="${ri-4}" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>`;
   g += `<g transform="translate(-9 -27)" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round"><path d="M1 5h9a2.5 2.5 0 1 0-2.5-2.5M1 9h13a2.5 2.5 0 1 1-2.5 2.5M1 13h6"/></g>`;
   g += `<text y="12" text-anchor="middle" font-size="26" font-weight="700" fill="var(--ink)" font-family="Rajdhani,sans-serif">${r0(o.wind)}<tspan font-size="11" fill="var(--muted)" dx="2">kn</tspan></text>`;
-  return `<svg viewBox="-130 -124 260 248" role="img" aria-label="Vent de ${windName(o.dir)} a ${r0(o.wind)} nusos, amb l'histograma de direccions d'avui">${g}</svg>`;
+  // onada: icona + alçada per fora de la rosa, al costat d'on ve
+  let wl = "";
+  if(o.wdir!=null){ const [x,y] = P(o.wdir, R+37), t = o.wave!=null ? `${r1(o.wave)} m` : "";
+    g += `<g class="rose-wave" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><path transform="translate(-12 -${t?13:6}) scale(1.33)" d="M0 4c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0M0 9c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0" fill="none" stroke="var(--wave-l)" stroke-width="2" stroke-linecap="round"/>${t ? `<text y="14" text-anchor="middle" font-size="13" font-weight="700" fill="var(--wave-l)" font-family="Rajdhani,sans-serif">${t}</text>` : ""}</g>`;
+    wl = `, onada de ${windName(o.wdir)}${o.wave!=null ? ` de ${r1(o.wave)} m` : ""}`; }
+  return `<svg viewBox="-157 -157 314 314" role="img" aria-label="Vent de ${windName(o.dir)} a ${r0(o.wind)} nusos${wl}, amb l'histograma de direccions d'avui">${g}</svg>`;
 }
 
 /* ---------- gràfic horari ---------- */
@@ -676,7 +680,7 @@ function renderNow(){
   $("src").setAttribute("aria-label", "Estació: "+STATIONS[stKey].name+". Canvia d'estació");
   $("gauge").innerHTML = gaugeSvg(s, v) + `<div class="grow"><div class="gflag" id="gflag"></div>${v.sub ? `<span class="g-why k-${v.k}">${esc(v.sub)}</span>` : ""}</div>`; renderFlag();
   const kind = isOffshore(n.dir) ? "terral" : isOnshore(n.dir) ? "de mar" : "lateral";
-  $("rose").innerHTML = roseSvg({k: lvWind(n.wind, c), dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live, hist: roseHist(OBS.key === stKey ? OBS.recs : [], roseForecast())});
+  $("rose").innerHTML = roseSvg({k: lvWind(n.wind, c), dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, wave:fc.wave, live, hist: roseHist(OBS.key === stKey ? OBS.recs : [], roseForecast())});
   // sense repetir el que ja diu el motiu de sota l'indicador
   const said = (v.sub || "").toLowerCase().split(" · "), FW = {"Racheig":"vent racheig","Probable pluja":"pluja probable","Terral":"terral"};
   $("flags").innerHTML = s.flags.filter(f => { const w = FW[f] || f.toLowerCase(); return !said.includes(w) && !(f === "Terral" && said.includes("terral fort")); }).map(f => `<span class="flag${INFO_FLAGS.includes(f) ? " info" : ""}">${esc(f)}</span>`).join("");

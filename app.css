@@ -66,6 +66,7 @@ h2,h3{font-family:var(--f-head);font-weight:700;margin:0;letter-spacing:.03em}
 .now-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center}
 .gauge,.rose{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
 .gauge svg,.rose svg{width:100%;max-width:230px;height:auto;display:block}
+.rose svg{max-width:262px}
 .gauge .arc{filter:var(--glow)}
 .rose .needle{filter:var(--glow);color:var(--accent)}
 .cap{font-size:.76rem;color:var(--muted);font-weight:600;text-align:center;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
@@ -186,12 +187,14 @@ footer a,.note a{color:var(--accent)}
   .hero{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
   .hero .now{grid-row:span 2}
   .gauge svg,.rose svg{max-width:260px}
+  .rose svg{max-width:296px}
   .big-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
   .map{height:420px}
 }
 @media (max-width:640px){
   .card{padding:12px}
   .gauge svg,.rose svg{max-width:168px}
+  .rose svg{max-width:192px}
   .gauge .cap{display:none}
   .rose .cap{font-size:.72rem;gap:2px 8px}
   .now .card-h{margin-bottom:2px}
@@ -483,7 +486,7 @@ tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--sel)}
 /* lletra gran: els dos indicadors, un sota l'altre i grans (el veredicte ja hi surt) */
 :root[data-size="big"] .now-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
 :root[data-size="big"] .gauge svg{max-width:300px}
-:root[data-size="big"] .rose svg{max-width:330px}
+:root[data-size="big"] .rose svg{max-width:376px}
 :root[data-size="big"] .gauge .cap{display:none}
 :root[data-size="big"] .rose .cap{font-size:1rem}
 :root[data-size="big"] .bverdict{display:none}
