@@ -592,3 +592,12 @@ details.vp-sec[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
 .rose svg{max-width:300px;margin-right:-6px}
 :root[data-size="big"] .now-grid{grid-template-columns:minmax(0,1fr)}
 :root[data-size="big"] .rose svg{margin-right:0}
+
+/* brúixola de la rosa */
+.rose{position:relative}
+.cmp-btn{position:absolute;top:-4px;right:-4px;z-index:1;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface-2);color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
+.cmp-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+#roseRot{transition:transform .25s linear}
+#roseRot .upr{transform-box:fill-box;transform-origin:center;transition:transform .25s linear}
+.rose .cmp-mark{display:none}
+.rose svg.cmp .cmp-mark{display:block}
