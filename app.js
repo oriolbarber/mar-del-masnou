@@ -737,7 +737,10 @@ function renderNow(){
   const td = todayDate();
   // Vista de lletra gran: només xifres i paraules, sense indicadors gràfics
   const row = (k, v, u, x) => `<div class="brow"><span class="bk">${k}</span><span class="bv">${v}${u?`<small>${u}</small>`:""}</span>${x?`<span class="bx">${x}</span>`:""}</div>`;
-  const bslots = SLOTS.map(sl => { const a = slotAgg(td, sl, c); if(!a) return ""; const vv = verdict(a);
+  const bvd = viewDay(), bTom = bvd !== td, dlab = d => { const x = new Date(d + "T12:00:00"); return DAYS_S[x.getDay()] + " " + x.getDate(); };
+  const tmD = DATA.daily.time[DATA.daily.time.indexOf(td) + 1];
+  const bday = `<div class="seg bday" role="group" aria-label="Dia"><button type="button" data-dayv="today" aria-pressed="${!bTom}"><b>Avui</b><small>${dlab(td)}</small></button>${tmD ? `<button type="button" data-dayv="tom" aria-pressed="${bTom}"><b>Demà</b><small>${dlab(tmD)}</small></button>` : ""}</div>`;
+  const bslots = SLOTS.map(sl => { const a = slotAgg(bvd, sl, c); if(!a) return ""; const vv = verdict(a);
     return `<div class="bslot k-${vv.k}${a.past?" past":""}"><span class="bk">${sl.label}</span><span class="tag"><span class="vd"></span>${vv.t}</span><span class="bw">${r0(a.wind)}<small>/${r0(a.gust)} kn</small></span><span class="bx">${windName(a.dir)} · ${r1(a.wave)} m</span></div>`; }).join("");
   $("bigNow").innerHTML = `<div class="bverdict k-${v.k}"><span>${v.t}</span><small>${s.score ?? "–"}/100</small></div>
     ${s.flags.length ? `<div class="flags">${s.flags.map(f => `<span class="flag">${esc(f)}</span>`).join("")}</div>` : ""}
@@ -747,7 +750,7 @@ function renderNow(){
     ${row("Aire", r0(n.temp), "°C")}
     ${row("Aigua", r1(fc.sst), "°C", suit(fc.sst))}
     ${row("Posta del sol", DATA.daily.sunset[i]?.slice(11,16) || "–", "")}
-    <div class="bslots"><span class="bk">Avui</span>${bslots}</div>`;
+    <div class="bslots">${bday}${bslots}</div>`;
   const vd = viewDay(), isTom = vd !== td;
   const slots = SLOTS.map(sl => { const a = slotAgg(vd, sl, c); if(!a) return "";
     const vv = verdict(a);

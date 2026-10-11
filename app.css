@@ -707,3 +707,9 @@ body.cam-open{overflow:hidden}
 .cam-bar{display:block}
 .cam-bar .cam-max-b{width:100%;justify-content:center}
 #mapCam .note{margin-top:8px}
+
+/* lletra gran: selector Avui / Demà a tota l'amplada */
+.bday{display:grid;grid-template-columns:1fr 1fr;width:100%;padding:4px;border-radius:16px}
+.bday button{min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;border-radius:12px;line-height:1.05}
+.bday button b{font-size:1.35rem;letter-spacing:.06em}
+.bday button small{font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:.95rem;font-weight:600;opacity:.85}
