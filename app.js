@@ -442,6 +442,8 @@ function roseForecast(){
   if(!DATA) return []; const td = todayDate(), i = DATA.daily.time.indexOf(td), set = i >= 0 ? new Date(DATA.daily.sunset[i]).getHours() : 20, nh = +nowKey().slice(11,13);
   const out = []; for(let h = nh + 1; h <= set; h++){ const p = DATA.hours[hourKey(td, h)]; if(p) out.push(p); } return out;
 }
+// icona d'onada (dibuixada a l'editor d'icones, graella 24×24)
+const WAVE_IC = ["M4 10.5C6 8 3 5.5 7 9C9 11 10.5 11 12 9C13.5 7 9.5 5 16.5 9C18 10 19.5 11 18 10","M4 17C6.5 13.5 3 12 7.5 15.5C9 17 10.5 17 12 15C13.5 13 10 11.5 16.5 15C18 16 19.5 17 16.5 15"];
 function roseSvg(o){
   const R = 100, ri = 38, P = (a, r) => [Math.sin(a*Math.PI/180)*r, -Math.cos(a*Math.PI/180)*r];
   const wedge = (a0, a1, ra, rb, fill, extra) => { const [x0,y0] = P(a0,rb), [x1,y1] = P(a1,rb), [x2,y2] = P(a1,ra), [x3,y3] = P(a0,ra);
@@ -465,7 +467,7 @@ function roseSvg(o){
   // onada: icona + alçada per fora de la rosa, al costat d'on ve
   let wl = "";
   if(o.wdir!=null){ const [x,y] = P(o.wdir, R+37), t = o.wave!=null ? `${r1(o.wave)} m` : "";
-    g += `<g class="rose-wave" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><path transform="translate(-12 -${t?13:6}) scale(1.33)" d="M0 4c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0M0 9c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0" fill="none" stroke="var(--wave-l)" stroke-width="2" stroke-linecap="round"/>${t ? `<text y="14" text-anchor="middle" font-size="13" font-weight="700" fill="var(--wave-l)" font-family="Rajdhani,sans-serif">${t}</text>` : ""}</g>`;
+    g += `<g class="rose-wave" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><g transform="translate(-12 -${t?18:11})" fill="none" stroke="var(--wave-l)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${WAVE_IC.map(d => `<path d="${d}"/>`).join("")}</g>${t ? `<text y="14" text-anchor="middle" font-size="13" font-weight="700" fill="var(--wave-l)" font-family="Rajdhani,sans-serif">${t}</text>` : ""}</g>`;
     wl = `, onada de ${windName(o.wdir)}${o.wave!=null ? ` de ${r1(o.wave)} m` : ""}`; }
   return `<svg viewBox="-157 -157 314 314" role="img" aria-label="Vent de ${windName(o.dir)} a ${r0(o.wind)} nusos${wl}, amb l'histograma de direccions d'avui">${g}</svg>`;
 }
