@@ -690,7 +690,7 @@ function renderNow(){
   const slots = SLOTS.map(sl => { const a = slotAgg(td, sl, c); if(!a) return "";
     const vv = verdict(a);
     return `<div class="sl k-${vv.k}${a.past?" past":""}"><div class="h">${sl.label}<span class="tag"><span class="vd"></span>${vv.t}</span></div>
-      <div class="w">${arrow(a.dir,13)}${r0(a.wind)}<small>/${r0(a.gust)} kn</small></div><div class="o">${windAbbr(a.dir)} · ${r1(a.wave)} m</div></div>`; }).join("");
+      <div class="w">${arrow(a.dir,13)}${r0(a.wind)}<small>/${r0(a.gust)} kn</small></div><div class="o">${windAbbr(a.dir)} · ${r1(a.wave)} m</div>${a.code != null ? `<span class="sl-wx">${wxIcon(a.code, 18)}</span>` : ""}</div>`; }).join("");
   const ol = $("outlook");
   ol.innerHTML = `<div class="card-h" style="margin-bottom:6px"><span class="lbl">Avui</span></div>
     <div class="slots">${slots}</div><div class="hc-read"></div><div class="chart">${hourChart(td, 7, 21, true, chartW(ol))}</div>${chartLegend(true)}`;
