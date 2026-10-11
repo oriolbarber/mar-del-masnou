@@ -445,8 +445,6 @@ tr[data-k].sel td{background:color-mix(in srgb, var(--sel) 14%, var(--surface))}
 tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--sel)}
 .wm-now .tag{font-size:.74rem}
 .lv-legend{margin-top:2px}
-:root[data-size="big"] #outlook{display:block}
-:root[data-size="big"] #outlook .slots{display:none}
 :root[data-size="big"] .hc-read{font-size:1.02rem}
 .legend-d{margin-top:4px}
 .legend-d summary{cursor:pointer;font-size:.78rem;font-weight:700;color:var(--muted);list-style:none;display:inline-flex;align-items:center;gap:6px;padding:4px 0}
@@ -532,3 +530,9 @@ details.vp-sec[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
 .sl .h{align-items:flex-start}
 .gfoot,.grow{min-width:0}
 .g-why,.gwhy{overflow-wrap:anywhere}
+/* selector Avui / Demà i gràfic dins la targeta del mapa */
+#outlook .card-h{align-items:center}
+.day-seg button{min-height:30px;padding:0 12px;font-size:.82rem}
+#wmNow{display:none}
+#windMap .chart{margin-bottom:2px}
+#windMap .wm-wrap{margin-top:4px}

@@ -518,17 +518,31 @@ function hourChart(date, h0, h1, wide, Wpx){
 }
 /* ---------- hora seleccionada, compartida pel gràfic, el mapa de vent i les taules ---------- */
 let SEL = null;
-const selKey = () => (SEL && DATA && DATA.hours[SEL]) ? SEL : nowKey();
+// Avui / Demà: automàtic (demà a partir d'una hora abans de la posta) fins que l'usuari en tria un
+let dayView = null, dayViewDate = null;
+function autoDay(){ const i = DATA.daily.time.indexOf(todayDate()); const set = i >= 0 ? new Date(DATA.daily.sunset[i]).getTime() : Infinity; return Date.now() >= set - 3600e3 ? "tom" : "today"; }
+function viewDay(){ if(dayViewDate !== todayDate()){ dayView = null; dayViewDate = todayDate(); }
+  const i = DATA.daily.time.indexOf(todayDate()); return (dayView || autoDay()) === "tom" && DATA.daily.time[i+1] ? DATA.daily.time[i+1] : todayDate(); }
+const selKey = () => (SEL && DATA && DATA.hours[SEL]) ? SEL : (DATA && viewDay() !== todayDate() ? hourKey(viewDay(), 12) : nowKey());
+// Gràfic del dia de l'hora triada (dins la targeta del mapa de vent)
+let chartDate = null;
+function renderDayChart(){
+  const host = $("dayChart"); if(!host || !DATA) return;
+  const k = selKey(), d = DATA.daily.time.includes(k.slice(0,10)) ? k.slice(0,10) : viewDay();
+  chartDate = d; host.innerHTML = hourChart(d, 7, 21, true, chartW($("windMap")));
+  $("dayLegend").innerHTML = chartLegend(true);
+}
 function readout(k){
   const date = k.slice(0,10), h = +k.slice(11,13), p = hourAt(date, h); if(!p) return "";
   const c = crit[act], v = verdict(scoreHour(p, c)), d = new Date(date+"T12:00:00");
-  const day = date === todayDate() ? "" : DAYS_L[d.getDay()]+" "+d.getDate()+" · ";
+  const day = "";   // la data ja surt a la capçalera de la targeta
   return `<span class="rd-m">${p.obs ? "Mesurat" : esc((MODELS[p.src] || MODELS[model]).label)}${p.code != null ? wxIcon(p.code, 18) : ""}</span><span class="rd-h"><b>${day}${pad(h)}:00</b><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span></span>${v.sub ? `<span class="rd-why">${esc(v.sub)}</span>` : ""}
     <span class="rd-v"><span>${arrow(p.dir,14)} Vent ${lvTxt(lvWind(p.wind,c), r0(p.wind)+" kn")} ${windAbbr(p.dir)}</span><span>Ratxa ${lvTxt(lvGust(p.gust,c), r0(p.gust)+" kn")}</span>
     <span>Onada ${lvTxt(lvWave(p.wave,c), r1(p.wave)+" m")}${p.hmax!=null ? ` <small>(màx ${p.hmaxE?"≈":""}${r1(p.hmax)})</small>` : ""}${p.tp!=null||p.per!=null ? ` · ${r0(p.tp ?? p.per)} s` : ""}</span></span>`;
 }
 function applySel(){
   if(!DATA) return; const k = selKey(), date = k.slice(0,10), h = String(+k.slice(11,13));
+  if(date !== chartDate && $("dayChart")) renderDayChart();
   document.querySelectorAll("svg.hc").forEach(svg => { const d = svg.dataset, g = svg.querySelector(".hsel"); if(!g) return;
     const j = d.date === date ? d.hs.split(",").indexOf(h) : -1;
     if(j < 0){ g.style.display = "none"; return; }
@@ -541,7 +555,7 @@ function selectHour(k, src){
   if(!DATA || !DATA.hours[k]) return; SEL = k; applySel();
   if(src !== "wm" && window.wmSelect) wmSelect(k, true);
 }
-window.SEL_K = () => SEL;
+window.SEL_K = () => DATA ? selKey() : SEL;
 window.mmSel = (k) => { if(DATA && DATA.hours[k]){ SEL = k; applySel(); } };
 let hcDrag = null;
 function hcPick(svg, clientX){
@@ -687,14 +701,16 @@ function renderNow(){
     ${row("Aigua", r1(fc.sst), "°C", suit(fc.sst))}
     ${row("Posta del sol", DATA.daily.sunset[i]?.slice(11,16) || "–", "")}
     <div class="bslots"><span class="bk">Avui</span>${bslots}</div>`;
-  const slots = SLOTS.map(sl => { const a = slotAgg(td, sl, c); if(!a) return "";
+  const vd = viewDay(), isTom = vd !== td;
+  const slots = SLOTS.map(sl => { const a = slotAgg(vd, sl, c); if(!a) return "";
     const vv = verdict(a);
     return `<div class="sl k-${vv.k}${a.past?" past":""}"><div class="h">${sl.label}<span class="tag"><span class="vd"></span>${vv.t}</span></div>
       <div class="w">${arrow(a.dir,13)}${r0(a.wind)}<small>/${r0(a.gust)} kn</small></div><div class="o">${windAbbr(a.dir)} · ${r1(a.wave)} m</div>${a.code != null ? `<span class="sl-wx">${wxIcon(a.code, 18)}</span>` : ""}</div>`; }).join("");
   const ol = $("outlook");
-  ol.innerHTML = `<div class="card-h" style="margin-bottom:6px"><span class="lbl">Avui</span></div>
-    <div class="slots">${slots}</div><div class="hc-read"></div><div class="chart">${hourChart(td, 7, 21, true, chartW(ol))}</div>${chartLegend(true)}`;
-  applySel();
+  ol.innerHTML = `<div class="card-h" style="margin-bottom:6px"><span class="lbl">${isTom ? "Demà" : "Avui"}</span>
+    <div class="seg day-seg" role="group" aria-label="Dia"><button type="button" data-dayv="today" aria-pressed="${!isTom}">Avui</button><button type="button" data-dayv="tom" aria-pressed="${isTom}">Demà</button></div></div>
+    <div class="slots">${slots}</div>`;
+  renderDayChart(); applySel();
 }
 const tpOf = p => p.tp ?? p.per ?? null;
 function waveSrc(p){
@@ -808,6 +824,8 @@ tick(); setInterval(tick, 20000);
 $("actSeg").addEventListener("click", e => { const b = e.target.closest("button[data-act]"); if(!b) return; act = b.dataset.act; store.set("mm_act", act); if(DATA) applyModel(); render(); if(window.renderWindMap) renderWindMap(); });
 $("week").addEventListener("click", e => { const b = e.target.closest(".wrow"); if(!b) return; openDay = openDay === b.dataset.day ? null : b.dataset.day; renderWeek();
   if(openDay && (!SEL || SEL.slice(0,10) !== openDay)) selectHour(hourKey(openDay, Math.max(7, Math.min(21, +selKey().slice(11,13)))), "chart"); });
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-dayv]"); if(!b || !DATA) return;
+  dayView = b.dataset.dayv; dayViewDate = todayDate(); SEL = null; renderNow(); selectHour(selKey(), "chart"); });
 let rsT = null, rsW = innerWidth;
 addEventListener("resize", () => { if(innerWidth === rsW) return; rsW = innerWidth; clearTimeout(rsT); rsT = setTimeout(() => { if(DATA){ renderNow(); renderWeek(); } }, 200); });
 $("refresh").addEventListener("click", () => { load(); loadStation(); loadObs(); loadInfo(); loadBuoy(); });
