@@ -861,6 +861,20 @@ applySize();
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", applyTheme);
 applyTheme();
 
+/* ---------- confirmació lliscant (per esborrar o descartar) ---------- */
+// Cal arrossegar el botó fins a l'altra punta: no es pot fer sense voler, ni amb guants ni amb el mòbil mullat.
+function slideConfirm(el, label, onDone){
+  el.innerHTML = `<div class="slc" tabindex="0" role="slider" aria-label="${esc(label)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="slc-t">${esc(label)}</span><span class="slc-k" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></div>`;
+  const tr = el.firstChild, kn = tr.querySelector(".slc-k"); let x0 = null, dx = 0, max = 0;
+  const set = v => { dx = Math.max(0, Math.min(max, v)); kn.style.transform = `translateX(${dx}px)`; tr.style.setProperty("--p", max ? dx/max : 0); tr.setAttribute("aria-valuenow", String(Math.round(max ? dx/max*100 : 0))); };
+  const done = () => { tr.classList.add("ok"); set(max); setTimeout(onDone, 120); };
+  kn.addEventListener("pointerdown", e => { max = tr.clientWidth - kn.offsetWidth - 8; x0 = e.clientX - dx; kn.setPointerCapture(e.pointerId); tr.classList.add("drag"); e.preventDefault(); });
+  kn.addEventListener("pointermove", e => { if(x0 != null) set(e.clientX - x0); });
+  const up = () => { if(x0 == null) return; x0 = null; tr.classList.remove("drag"); if(dx >= max * 0.9) done(); else set(0); };
+  kn.addEventListener("pointerup", up); kn.addEventListener("pointercancel", up);
+  tr.addEventListener("keydown", e => { if(e.key !== "ArrowRight" && e.key !== "End") return; max = tr.clientWidth - kn.offsetWidth - 8; e.preventDefault(); set(e.key === "End" ? max : dx + max/4); if(dx >= max * 0.99) done(); });
+}
+
 /* ---------- navegació ---------- */
 function go(v){
   ["fc","trip","map","log"].forEach(k => { $("view-"+k).hidden = k !== v; });

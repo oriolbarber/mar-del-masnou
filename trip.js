@@ -138,11 +138,11 @@ function startWatch(){
     // Estalvi: una lectura de GPS cada 20 s (el xip pot reposar entre lectures) i res més en marxa
     const fix = () => navigator.geolocation.getCurrentPosition(onPos, onPosErr, {enableHighAccuracy:true, maximumAge:5000, timeout:15000});
     fix(); ecoTimer = setInterval(fix, 20000);
-    tTimer = setInterval(() => { if(LIVE){ $("liveTimer").textContent = fmtDur(Date.now()-LIVE.start); renderEco(); } }, 20000);
-    setEco(true);
+    tTimer = setInterval(() => { if(LIVE){ $("liveTimer").textContent = fmtDur(Date.now()-LIVE.start); renderLive(); } }, 20000);
+    setEco();
   } else {
     watchId = navigator.geolocation.watchPosition(onPos, onPosErr, {enableHighAccuracy:true, maximumAge:0, timeout:30000});
-    tTimer = setInterval(() => { if(LIVE) $("liveTimer").textContent = fmtDur(Date.now()-LIVE.start); }, 1000);
+    tTimer = setInterval(() => { if(LIVE){ $("liveTimer").textContent = fmtDur(Date.now()-LIVE.start); rideTime(); } }, 1000);
   }
   clearInterval(tWind); tWind = setInterval(sampleWind, (LIVE.eco ? 5 : 1)*60*1000); sampleWind();
   clearInterval(tSave); tSave = setInterval(saveLive, 15000);
@@ -150,7 +150,7 @@ function startWatch(){
 }
 function stopWatch(){
   if(watchId != null) navigator.geolocation.clearWatch(watchId); watchId = null;
-  clearInterval(ecoTimer); ecoTimer = null; setEco(false);
+  clearInterval(ecoTimer); ecoTimer = null;
   clearInterval(tTimer); clearInterval(tWind); clearInterval(tSave);
   try{ wakeLock && wakeLock.release(); }catch(e){} wakeLock = null;
 }
@@ -167,7 +167,7 @@ function startTrip(){
   const eco = $("ecoMode").checked; store.set("mm_eco", eco);
   LIVE = {id: Date.now(), name: $("tripName").value.trim(), act, start: Date.now(), pts: [], wind: [], eco, station: stKey};
   if(!startWatch()){ LIVE = null; return; }
-  saveLive(); setRecUI(); renderLive();
+  saveLive(); setRecUI(); showRide(true);
 }
 let confirmStop = 0, confirmDiscard = 0;
 async function stopTrip(){
@@ -255,9 +255,11 @@ function svgTrack(el, pts, colored){
   el.innerHTML = `<svg viewBox="0 0 320 ${Math.max(80, h*S+40)}" role="img" aria-label="Traçat de la ruta"><polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round"/>
     <circle cx="${X(pts[0])}" cy="${Y(pts[0])}" r="5" fill="var(--ideal)"/><circle cx="${X(pts[pts.length-1])}" cy="${Y(pts[pts.length-1])}" r="5" fill="var(--no)"/></svg>`;
 }
-function destroyLiveMap(){ if(liveMap){ liveMap.remove(); liveMap = null; liveLine = null; liveDot = null; } }
+let liveMapEl = null;   // on és el mapa en directe: "liveMap" (vista Sortida) o "rideMap" (pantalla de ruta)
+function destroyLiveMap(){ if(liveMap){ liveMap.remove(); liveMap = null; liveLine = null; liveDot = null; } liveMapEl = null; }
 function updateLiveMap(){
-  const el = $("liveMap"), P = LIVE.pts;
+  const id = rideVisible ? "rideMap" : "liveMap"; if(liveMapEl && liveMapEl !== id) destroyLiveMap();
+  const el = $(id), P = LIVE.pts; liveMapEl = id;
   if(!window.L){ svgTrack(el, P); return; }
   if(!liveMap){ liveMap = baseMap(el, true); liveLine = L.polyline([], {color: cssVar("--accent"), weight:4}).addTo(liveMap); }
   if(!P.length) return;
@@ -298,25 +300,69 @@ function renderLive(){
     stat("course", "Angle al vent", twa!=null ? r0(twa)+"°" : "–", "", twa!=null ? posOf(twa).t : "Navega per calcular-lo") +
     stat("clock", "En moviment", fmtDurShort(s.movingS*1000), "", P.length+" punts GPS");
   $("ctaLabel").textContent = "Sortida en curs · " + fmtDurShort(Date.now()-LIVE.start);
-  if(LIVE.eco){ $("ecoOn").hidden = ecoVisible; renderEco(sogNow, s, w, cog); if(ecoVisible) return; }
+  renderRide({sog: sogNow, s, w, cog, twa, last});
+  if(rideVisible){ if(ridePage === "map" && !LIVE.eco) updateLiveMap(); return; }
   if(!$("view-trip").hidden) updateLiveMap();
 }
 
-/* ---------- pantalla d'estalvi ---------- */
-function setEco(on){ ecoVisible = !!on && !!LIVE && LIVE.eco; $("ecoScreen").hidden = !ecoVisible; if(LIVE && LIVE.eco) $("ecoOn").hidden = ecoVisible; if(ecoVisible){ destroyLiveMap(); renderEco(); } }
-function renderEco(sog, s, w, cog){
-  if(!ecoVisible || !LIVE) return;
-  const P = LIVE.pts, last = P[P.length-1];
-  if(s === undefined){ s = summarize(LIVE); sog = last ? last.sog : null; cog = last ? last.cog : null; w = stFresh() ? {wind:ST.wind, dir:ST.dir} : LIVE.wind[LIVE.wind.length-1]; }
-  const m = Math.floor((Date.now()-LIVE.start)/60000);
-  $("ecoAct").textContent = DEFAULTS[LIVE.act]?.name || "";
-  $("ecoGps").textContent = last ? "GPS fa "+Math.max(0, Math.round((Date.now()-last.t)/1000))+" s" : "Esperant GPS…";
-  $("ecoSog").textContent = r1(sog);
-  $("ecoDist").textContent = s.distNm.toFixed(2).replace(".",",");
-  $("ecoTime").textContent = Math.floor(m/60)+":"+pad(m%60);
-  $("ecoWind").textContent = w ? r0(w.wind) : "–"; $("ecoWindU").textContent = w ? "kn · "+windAbbr(w.dir) : "kn";
-  $("ecoCog").textContent = cog!=null ? r0(cog)+"°" : "–"; $("ecoCogU").textContent = cog!=null ? cogName(cog) : "\u00a0";
+/* ---------- pantalla de ruta (normal i estalvi) ---------- */
+// Mentre es grava, una pantalla sencera amb les dades grans. Normal: dades + mapa, s'actualitza cada segon.
+// Estalvi: fons negre, només dades bàsiques i GPS cada 20 s (el mapa gasta bateria i dades).
+let rideVisible = false, ridePage = "data";
+const dirArrow = (deg, sz) => deg == null ? "" : `<svg class="rarw" width="${sz}" height="${sz}" viewBox="0 0 20 20" aria-hidden="true"><g transform="rotate(${Math.round(deg)} 10 10)"><path d="M10 1.5 L15.5 16 L10 12.5 L4.5 16 Z" fill="currentColor"/></g></svg>`;
+function setEco(){ $("ride").classList.toggle("eco", !!(LIVE && LIVE.eco)); if(LIVE) $("rideEco").setAttribute("aria-pressed", String(!!LIVE.eco)); if(LIVE && LIVE.eco && ridePage === "map") rideShowPage("data"); }
+function showRide(on){
+  rideVisible = !!on && !!LIVE; $("ride").hidden = !rideVisible; document.body.classList.toggle("riding", rideVisible);
+  if(!rideVisible){ if(liveMapEl === "rideMap") destroyLiveMap(); return; }
+  setEco(); rideShowPage(ridePage); rideConfirm(false); renderLive();
 }
+function rideShowPage(pg){
+  if(LIVE && LIVE.eco) pg = "data";
+  ridePage = pg; $("rideData").hidden = pg !== "data"; $("rideMapP").hidden = pg !== "map";
+  document.querySelectorAll("#rideSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rp === pg)));
+  if(pg === "map"){ setTimeout(() => { renderLive(); liveMap && liveMap.invalidateSize(); }, 0); } else if(liveMapEl === "rideMap") destroyLiveMap();
+}
+function rideConfirm(on){ $("rideBot").hidden = !!on; $("rideConfirm").hidden = !on; if(on) slideConfirm($("rideDiscard"), "Llisca per descartar", discardNow); }
+const rcell = (label, v, u, sub, cls) => `<div class="rc${cls ? " " + cls : ""}"><span class="rl">${label}</span><span class="rv s">${v}<small>${u || ""}</small></span><span class="rs">${sub || "&nbsp;"}</span></div>`;
+function renderRide(d){
+  if(!rideVisible || !LIVE) return;
+  const {sog, s, w, cog, twa, last} = d, eco = !!LIVE.eco, P = LIVE.pts;
+  $("rideAct").textContent = DEFAULTS[LIVE.act]?.name || "";
+  rideTime();
+  const age = last ? Math.max(0, Math.round((Date.now() - last.t)/1000)) : null;
+  $("rideGps").textContent = !last ? "Esperant GPS…" : eco ? `GPS fa ${age} s` : `GPS ±${last.acc ?? "?"} m`;
+  $("rideGps").className = "ride-gps" + (!last || age > 60 ? " bad" : "");
+  $("rSog").textContent = sog != null ? r1(sog) : "–";
+  $("rSogU").textContent = "kn · màx " + r1(s.maxKn);
+  // tornada: distància i rumb fins al punt de sortida
+  const home = P.length > 1 ? {d: hav(last, P[0]) / NM, b: bearing(last, P[0])} : null;
+  const cells = [
+    rcell("Distància", s.distNm.toFixed(2).replace(".", ","), "nm", "mitjana " + r1(s.avgKn) + " kn"),
+    rcell("Rumb", cog != null ? dirArrow(cog, 22) + r0(cog) + "°" : "–", "", cog != null ? cogName(cog) : "&nbsp;"),
+    rcell("Vent", w ? arrow(w.dir, 22) + r0(w.wind) : "–", "kn", w ? windAbbr(w.dir) + " · ratxa " + r0(w.gust) : "sense dades"),
+    rcell("Tornada", home ? dirArrow(home.b, 22) + home.d.toFixed(2).replace(".", ",") : "–", "nm", home ? "cap al " + cogName(home.b) + " · " + r0(home.b) + "°" : "&nbsp;")
+  ];
+  if(!eco) cells.push(
+    rcell("Angle vent", twa != null ? r0(twa) + "°" : "–", "", twa != null ? posOf(twa).t : "navega per calcular-lo"),
+    rcell("En moviment", fmtDurShort(s.movingS*1000).replace(" min", "").replace(" h ", ":"), s.movingS >= 3600 ? "h" : "min", P.length + " punts GPS"));
+  $("rideGrid").innerHTML = cells.join("");
+  if(ridePage === "map") $("rideMini").innerHTML = `<b>${sog != null ? r1(sog) : "–"}</b> kn · <b>${s.distNm.toFixed(2).replace(".", ",")}</b> nm${home ? ` · base ${home.d.toFixed(1).replace(".", ",")} nm ${dirArrow(home.b, 14)}` : ""}`;
+  const g = $("liveGap"); $("rideGap").hidden = g.hidden; $("rideGap").innerHTML = g.innerHTML;
+}
+function rideTime(){ if(!LIVE) return; const m = Math.floor((Date.now() - LIVE.start)/60000); $("rideTime").textContent = Math.floor(m/60) + ":" + pad(m%60); }
+// canvi de mode en marxa: reinicia la lectura del GPS amb el nou ritme
+function rideToggleEco(){ if(!LIVE) return; LIVE.eco = !LIVE.eco; store.set("mm_eco", LIVE.eco); $("ecoMode").checked = LIVE.eco;
+  if(watchId != null) navigator.geolocation.clearWatch(watchId); watchId = null; clearInterval(ecoTimer); ecoTimer = null;
+  startWatch(); saveLive(); setEco(); renderLive(); }
+$("rideSeg").addEventListener("click", e => { const b = e.target.closest("[data-rp]"); if(b) rideShowPage(b.dataset.rp); });
+$("rideHide").addEventListener("click", () => { showRide(false); go("fc"); });
+$("rideEco").addEventListener("click", rideToggleEco);
+$("rideStop").addEventListener("click", () => rideConfirm(true));
+$("rideBack").addEventListener("click", () => rideConfirm(false));
+$("rideSave").addEventListener("click", async () => { confirmStop = Date.now(); showRide(false); await stopTrip(); });
+const discardNow = () => { confirmDiscard = Date.now(); showRide(false); discardTrip(); };
+slideConfirm($("rideDiscard"), "Llisca per descartar", discardNow);
+slideConfirm($("discardTrip"), "Llisca per descartar", discardNow);
 
 /* ---------- vent del model per a sortides sense estació (o importades) ---------- */
 // Vent real de l'estació (registres de 5 minuts) per a tota la durada de la sortida; si no n'hi ha, el del model
@@ -473,13 +519,12 @@ async function showTrip(id){
       <p class="note" style="margin-top:8px">Angle entre el rumb sobre el fons (GPS) i la direcció del vent: cenyida &lt; 60°, través 60–110°, llarg 110–150°, popa &gt; 150°. No té en compte el corrent ni l'abatiment.</p></article>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" type="button" id="expGpx">Exporta GPX</button><button class="btn" type="button" id="expCsv">Exporta CSV</button>
-      <button class="btn danger" type="button" id="delTrip" style="margin-left:auto">Esborra</button></div>`;
+</div>
+    <div id="delTrip"></div>`;
   $("backList").onclick = renderList;
   $("expGpx").onclick = () => download(t, "gpx");
   $("expCsv").onclick = () => download(t, "csv");
-  let delAt = 0;
-  $("delTrip").onclick = async () => { if(Date.now()-delAt > 4000){ delAt = Date.now(); $("delTrip").textContent = "Toca de nou per esborrar"; setTimeout(()=>{ const b=$("delTrip"); if(b) b.textContent="Esborra"; }, 4000); return; }
-    await DB.del(t.id); renderList(); };
+  slideConfirm($("delTrip"), "Llisca per esborrar", async () => { await DB.del(t.id); renderList(); });
   if(detailMap){ detailMap.remove(); detailMap = null; }
   setTimeout(() => { detailMap = tripMap($("tripMap"), t); }, 0);
   window.scrollTo({top:0});
@@ -503,8 +548,7 @@ function download(t, kind){
 /* ---------- connexions ---------- */
 $("startTrip").addEventListener("click", startTrip);
 $("ecoMode").checked = !!store.get("mm_eco");
-$("ecoOff").addEventListener("click", () => { setEco(false); go("trip"); renderLive(); });
-$("ecoOn").addEventListener("click", () => setEco(true));
+$("ecoOn").addEventListener("click", () => showRide(true));
 $("logList").addEventListener("change", e => {
   if(e.target.id === "gpxIn" && e.target.files[0]) importGpx(e.target.files[0]);
   if(e.target.id === "backupIn" && e.target.files[0]) backupIn(e.target.files[0]);
@@ -512,10 +556,9 @@ $("logList").addEventListener("change", e => {
 $("logList").addEventListener("click", e => { if(e.target.closest("#backupOut")) backupOut(); });
 storagePersisted();
 $("stopTrip").addEventListener("click", stopTrip);
-$("discardTrip").addEventListener("click", discardTrip);
 $("logList").addEventListener("click", e => { const b = e.target.closest("[data-trip]"); if(b) showTrip(+b.dataset.trip); });
 window.addEventListener("mm-view", e => {
-  if(e.detail === "trip" && LIVE) setTimeout(() => { updateLiveMap(); liveMap && liveMap.invalidateSize(); }, 0);
+  if(e.detail === "trip" && LIVE) showRide(true);
   if(e.detail === "log") renderList();
 });
 document.addEventListener("visibilitychange", () => { if(!LIVE) return;
@@ -526,7 +569,7 @@ window.addEventListener("pagehide", saveLive);
 // Recupera una sortida que estava en curs (app tancada o recarregada)
 (function resume(){
   const saved = store.get("mm_live");
-  if(saved && saved.start && Date.now() - saved.start < 18*3600*1000){ LIVE = saved; startWatch(); }
+  if(saved && saved.start && Date.now() - saved.start < 18*3600*1000){ LIVE = saved; startWatch(); setTimeout(() => showRide(true), 0); }
   else if(saved) store.del("mm_live");
   setRecUI();
 })();
