@@ -181,7 +181,7 @@ function build(fc, ma){
 // fins a ~4 dies; més enllà, i per als camps que no té, s'omple amb l'automàtic.
 const MODELS = {
   arome: {label:"AROME", api:"meteofrance_seamless", long:"AROME (Météo-France)"},
-  auto:  {label:"Combinat", api:null, long:"Combinat d'Open-Meteo (barreja els models que funcionen millor a cada zona i termini)"},
+  auto:  {label:"Open-Meteo", api:null, long:"Open-Meteo (barreja els models que funcionen millor a cada zona i termini)"},
   ecmwf: {label:"ECMWF", api:"ecmwf_ifs", long:"ECMWF IFS 9 km (centre europeu)"},
   icon:  {label:"ICON", api:"icon_eu", long:"ICON-EU (servei alemany, DWD)"},
   ukmo:  {label:"UKMO", api:"ukmo_global_deterministic_10km", long:"UKMO Global 10 km (Met Office britànic)"},
@@ -753,7 +753,7 @@ function renderModelBox(errs, bestE){
   $("peekModel").textContent = modelPref === "best" ? "El que més encerta · " + MODELS[model].label : MODELS[modelPref].label;
   const opt = (v, t) => `<option value="${v}"${modelPref === v ? " selected" : ""}>${t}</option>`;
   $("modelBox").innerHTML = `<label class="model-pick"><span class="sr">Model</span>
-      <select id="modelSel">${opt("best", "El que més encerta avui" + (modelPref === "best" ? ` (${MODELS[model].label})` : ""))}${opt("opt","Optimista (el model més favorable)")}${opt("pes","Pessimista (el model més desfavorable)")}${opt("arome","AROME")}${opt("icon","ICON")}${opt("ecmwf","ECMWF")}${opt("ukmo","UKMO")}${opt("auto","Combinat")}</select></label>
+      <select id="modelSel">${opt("best", "El que més encerta avui" + (modelPref === "best" ? ` (${MODELS[model].label})` : ""))}${opt("opt","Optimista (el model més favorable)")}${opt("pes","Pessimista (el model més desfavorable)")}${opt("arome","AROME")}${opt("icon","ICON")}${opt("ecmwf","ECMWF")}${opt("ukmo","UKMO")}${opt("auto","Open-Meteo (barreja de models)")}</select></label>
     ${errs.length ? `<div class="model-err-row"><span class="lbl">Error d'avui vs. estació ${esc(STATIONS[stKey].name)}</span>${[...errs].sort((x, y) => x.mae - y.mae).map(e => `<span class="${e.mae === bestE ? "best" : ""}${e.k === model ? " cur" : ""}">${esc(MODELS[e.k].label)} <b>${r1(e.mae)} kn</b></span>`).join("")}</div>` : `<p class="note">Encara no hi ha prou hores mesurades avui per comparar els models.</p>`}`;
 }
 function dayName(date, i){ const d = new Date(date+"T12:00:00"); return {name: i===0 ? "Avui" : i===1 ? "Demà" : DAYS_L[d.getDay()], dm: d.getDate()+" "+MONTHS[d.getMonth()]}; }
@@ -773,7 +773,7 @@ function renderWeek(){
       <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>`;
     if(open) html += `<div class="wdetail"><div class="hc-read"></div><div class="chart">${hourChart(date, 7, 21, true, chartW($("week")) - 8)}</div>${chartLegend(true)}</div>`;
   });
-  const end = DATA.modelEnd && model !== "auto" ? (() => { const d = new Date(DATA.modelEnd); return `Previsió ${MODELS[model].label} fins ${DAYS_L[d.getDay()].toLowerCase()} a les ${pad(d.getHours())} h; després, model combinat.`; })() : "";
+  const end = DATA.modelEnd && model !== "auto" ? (() => { const d = new Date(DATA.modelEnd); return `Previsió ${MODELS[model].label} fins ${DAYS_L[d.getDay()].toLowerCase()} a les ${pad(d.getHours())} h; després, Open-Meteo.`; })() : "";
   $("week").innerHTML = (end ? `<p class="note" style="margin-bottom:6px">${esc(end)}</p>` : "") + html;
   applySel();
   $("peekWeek").textContent = good ? good+" franges bones o ideals" : "Cap franja bona";
