@@ -761,9 +761,9 @@ function renderWeek(){
     const domDir = aggs.filter(Boolean).sort((a,b)=>b.wind-a.wind)[0]?.dir;
     const open = openDay === date;
     html += `<button type="button" class="wrow" data-day="${date}" aria-expanded="${open}" aria-label="${dn.name} ${dn.dm}: mostra les hores">
-      <span class="d"><b>${dn.name}</b><span>${dn.dm} · <i>${r0(D.temperature_2m_min[i])}–${r0(D.temperature_2m_max[i])}°</i></span></span>
-      <span>${wxIcon(D.weather_code[i],20)}</span><span class="pills">${pills}</span>
-      <span class="wr"><span class="wr-w">${arrow(domDir,13)}<em>${windAbbr(domDir)}</em><b>${ws.length?r0(Math.min(...ws))+"–"+r0(Math.max(...ws)):"–"}</b><small>kn</small></span><span class="wr-o">${waveIc(14)}<b>${wv.length?Math.max(...wv).toFixed(1).replace(".",","):"–"}</b><small>m</small></span></span>
+      <span class="d"><b><span class="dn">${dn.name}</span>${wxIcon(D.weather_code[i],20)}</b><span>${dn.dm} · <i>${r0(D.temperature_2m_min[i])}–${r0(D.temperature_2m_max[i])}°</i></span></span>
+<span class="pills">${pills}</span>
+      <span class="wr"><span class="wr-w"><em>${windAbbr(domDir)}</em>${arrow(domDir,13)}<b>${ws.length?r0(Math.min(...ws))+"–"+r0(Math.max(...ws)):"–"}</b><small>kn</small></span><span class="wr-o">${waveIc(14)}<b>${wv.length?Math.max(...wv).toFixed(1).replace(".",","):"–"}</b><small>m</small></span></span>
       <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>`;
     if(open) html += `<div class="wdetail"><div class="hc-read"></div><div class="chart">${hourChart(date, 7, 21, true, chartW($("week")) - 8)}</div>${chartLegend(true)}</div>`;
   });

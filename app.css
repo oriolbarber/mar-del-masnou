@@ -310,7 +310,6 @@ button.src{border:1px solid var(--line);background:var(--surface-2);border-radiu
 :root[data-size="big"] table{font-size:1.05rem}
 :root[data-size="big"] th{font-size:.9rem}
 :root[data-size="big"] .wrow{grid-template-columns:minmax(0,1.2fr) minmax(0,1.3fr) minmax(0,1fr) 22px;padding:14px 2px}
-:root[data-size="big"] .wrow>span:nth-child(2){display:none}
 :root[data-size="big"] .wrow .d b{font-size:1.4rem}
 :root[data-size="big"] .wrow .d span{font-size:.95rem}
 :root[data-size="big"] .wrow .pill{height:34px;font-size:1rem}
@@ -558,21 +557,24 @@ details.vp-sec[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
 #iHours{margin:0 14px 10px}
 
 /* 7 dies: dia i temperatures sense tallar; a la dreta, vent a dalt i onada a sota, tot alineat */
-.wrow{grid-template-columns:104px 20px minmax(0,1fr) 100px 18px;gap:6px}
+.wrow{grid-template-columns:126px minmax(0,1fr) 104px 18px;gap:6px}
 .wrow .d{min-width:0}
-.wrow .d b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wrow .d b{display:flex;align-items:center;gap:5px;white-space:nowrap;min-width:0}
+.wrow .d .dn{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.wrow .d b svg{flex:none}
 .wrow .d span{display:block;white-space:nowrap;font-size:.72rem}
 .wrow .d i{font-style:normal;color:var(--ink)}
 .wrow .wr{display:grid;gap:3px;justify-items:stretch;font-size:.84rem;min-width:0}
-.wrow .wr>span{display:flex;align-items:center;gap:3px;white-space:nowrap}
-.wrow .wr b{margin-left:auto}
+.wrow .wr>span{display:flex;align-items:center;justify-content:flex-end;gap:3px;white-space:nowrap}
+.wrow .wr b{text-align:right}
+.wrow .wr small{min-width:2ch}
 .wrow .wr b{font-weight:700;color:var(--ink)}
-.wrow .wr small{display:inline;font-size:.7rem;color:var(--muted)}
+.wrow .wr small{display:inline-block;font-size:.7rem;color:var(--muted)}
 .wrow .wr em{font-style:normal;font-size:.7rem;color:var(--muted);margin-right:1px}
 .wrow .wr-o{color:var(--wave-l)}
 .wrow .wr-o b{color:var(--wave-l)}
 .wrow .wr svg{flex:none}
-@media (max-width:380px){ .wrow{grid-template-columns:96px 18px minmax(0,1fr) 76px 16px;gap:5px} .wrow .wr em{display:none} }
+@media (max-width:380px){ .wrow{grid-template-columns:132px minmax(0,1fr) 76px 16px;gap:5px} .wrow .wr em{display:none} .wrow .d b{font-size:.98rem;gap:4px} .wrow .d b svg{width:18px;height:18px} .wrow .pills{gap:3px} }
 /* lletra gran: dia a dalt i franges a sota; vent i onada a la dreta */
 :root[data-size="big"] .wrow{grid-template-columns:minmax(0,1fr) auto 22px;grid-template-areas:"d wr ch" "p wr ch";row-gap:8px}
 :root[data-size="big"] .wrow .d{grid-area:d}
@@ -583,3 +585,5 @@ details.vp-sec[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
 :root[data-size="big"] .wrow .wr{align-content:center;align-self:center;row-gap:6px}
 :root[data-size="big"] .wrow .wr svg{width:20px;height:20px}
 :root[data-size="big"] .wrow .wr em{font-size:.9rem}
+.wrow .d b .dn{display:inline;font-size:inherit;color:inherit;font-weight:inherit;white-space:nowrap}
+.wrow .wr-o b{min-width:0}
