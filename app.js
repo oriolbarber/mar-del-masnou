@@ -712,8 +712,9 @@ function renderNow(){
     return `<div class="sl k-${vv.k}${a.past?" past":""}"><div class="h">${sl.label}<span class="tag"><span class="vd"></span>${vv.t}</span></div>
       <div class="w">${arrow(a.dir,13)}${r0(a.wind)}<small>/${r0(a.gust)} kn</small></div><div class="o">${windAbbr(a.dir)} · ${r1(a.wave)} m</div>${a.code != null ? `<span class="sl-wx">${wxIcon(a.code, 18)}</span>` : ""}</div>`; }).join("");
   const ol = $("outlook");
-  ol.innerHTML = `<div class="card-h" style="margin-bottom:6px"><span class="lbl">${isTom ? "Demà" : "Avui"}</span>
-    <div class="seg day-seg" role="group" aria-label="Dia"><button type="button" data-dayv="today" aria-pressed="${!isTom}">Avui</button><button type="button" data-dayv="tom" aria-pressed="${isTom}">Demà</button></div></div>
+  const dd = new Date(vd + "T12:00:00");
+  ol.innerHTML = `<div class="card-h" style="margin-bottom:6px"><div class="seg day-seg" role="group" aria-label="Dia"><button type="button" data-dayv="today" aria-pressed="${!isTom}">Avui</button><button type="button" data-dayv="tom" aria-pressed="${isTom}">Demà</button></div>
+    <span class="lbl day-date">${DAYS_L[dd.getDay()]} ${dd.getDate()} ${MONTHS[dd.getMonth()]}</span></div>
     <div class="slots">${slots}</div>`;
   renderDayChart(); applySel();
 }

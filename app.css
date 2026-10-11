@@ -539,7 +539,11 @@ details.vp-sec[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
 .g-why,.gwhy{overflow-wrap:anywhere}
 /* selector Avui / Demà i gràfic dins la targeta del mapa */
 #outlook .card-h{align-items:center}
-.day-seg button{min-height:30px;padding:0 12px;font-size:.82rem}
+.day-seg{padding:2px;border-radius:10px;flex:none}
+.day-seg button{min-height:26px;padding:0 11px;font-size:.8rem;letter-spacing:.08em;border-radius:8px}
+#outlook .day-date{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #wmNow{display:none}
 #windMap .chart{margin-bottom:2px}
 #windMap .wm-wrap{margin-top:4px}
+/* pantalles estretes: que «GAR · 0,5 m» hi càpiga sencer al costat de la icona del temps */
+@media (max-width:380px){ .slots{gap:6px} .sl{padding:7px 7px} .sl .o{padding-right:15px;letter-spacing:-.01em} .sl .sl-wx{right:3px;bottom:4px} }
