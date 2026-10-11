@@ -362,9 +362,6 @@ td small.obs{display:block;font-family:var(--f-body);font-size:.68rem;font-weigh
 
 /* mapa del vent amb taula lliscant */
 .wm .card-h{align-items:baseline}
-.wm-cap{display:flex;flex-direction:column;align-items:flex-end;font-size:.82rem;line-height:1.25}
-.wm-cap span{color:var(--muted);font-weight:600;font-size:.76rem}
-.wm-cap span.obs{color:var(--accent-2)}
 .wm-wrap{position:relative}
 .wm-map{height:240px;border-radius:14px;touch-action:pan-y;cursor:default}
 .wm-map .leaflet-marker-pane{z-index:650}
@@ -495,8 +492,6 @@ tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--sel)}
 .gflag-b{border:0;background:none;padding:2px;cursor:pointer;display:grid;place-items:center}
 .gflag-t{font-size:.74rem;font-weight:600;color:var(--muted);line-height:1.25}
 .info:empty{display:none}
-.hc-read{position:relative;padding-right:96px}
-.hc-read .rd-m{position:absolute;top:7px;right:10px;display:inline-flex;align-items:center;gap:6px;font-size:.76rem;font-weight:700;color:var(--muted)}
 /* motiu sota l'indicador i avisos informatius */
 .gauge .grow{align-self:stretch;display:flex;align-items:center;gap:6px;min-width:0}
 .gauge .gflag{margin-top:0}
@@ -523,9 +518,18 @@ details.vp-sec[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
 .sl .sl-wx{position:absolute;right:5px;bottom:5px;line-height:0;color:var(--ink);opacity:.85}
 .sl .o{padding-right:17px}
 /* textos llargs: no trencar paraula a paraula en columnes estretes */
-.hc-read .rd-h{white-space:nowrap;flex-wrap:nowrap}
-.hc-read .rd-why{flex-basis:100%;order:0;font-size:.8rem;font-weight:700;color:var(--muted);margin-top:-2px}
+.hc-read .rd-top{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;min-width:0}
+.hc-read .rd-h{white-space:nowrap;flex-wrap:nowrap;flex:none}
+.hc-read .rd-m{margin-left:auto;display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;font-size:.76rem;font-weight:700;color:var(--muted)}
+.hc-read .rd-m span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hc-read .rd-m.obs{color:var(--accent-2)}
+.hc-read .rd-m svg{flex:none}
+.hc-read .rd-why{flex-basis:100%;font-size:.8rem;font-weight:700;color:var(--muted);margin-top:-2px;overflow-wrap:anywhere}
 .hc-read .rd-v{flex-basis:100%}
+/* capçalera de «Vent per hores»: títol i dia en una sola línia */
+.wm .card-h{flex-wrap:nowrap;align-items:center}
+.wm .card-h .lbl{flex:none}
+.wm-cap{display:block;min-width:0;margin-left:auto;font-size:.86rem;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl .h .tag{white-space:normal;line-height:1.1;text-align:left}
 .sl .h{align-items:flex-start}
 .gfoot,.grow{min-width:0}

@@ -56,8 +56,10 @@ function wmShow(k, scroll){
   const p = hourAt(date, hh) || DATA.hours[k];
   document.querySelectorAll("#wmTable [data-k]").forEach(td => td.classList.toggle("sel", td.dataset.k === k));
   const d = new Date(date + "T12:00:00");
-  const src = p.obs ? `Mesurat a l'estació ${STATIONS[stKey].name}` : `Previsió ${(MODELS[p.src] || MODELS[model]).label}`;
-  $("wmCap").innerHTML = `<b>${DAYS_L[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} · ${pad(hh)}:00</b><span class="${p.obs ? "obs" : ""}">${esc(src)}</span>`;
+  // només el dia: l'hora, el veredicte i la font ja surten al requadre de sota
+  const td = new Date(), tm = new Date(Date.now() + 864e5), iso = x => `${x.getFullYear()}-${pad(x.getMonth()+1)}-${pad(x.getDate())}`;
+  const rel = date === iso(td) ? "Avui" : date === iso(tm) ? "Demà" : DAYS_L[d.getDay()];
+  $("wmCap").textContent = `${rel}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
   const c = crit[act], lw = lvWind(p.wind, c), lg = lvGust(p.gust, c), lo = lvWave(p.wave, c), v = verdict(scoreHour(p, c));
   $("wmNow").innerHTML = `<span><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span></span>
     <span>Vent ${windName(p.dir)} ${r0(p.dir)}° · ${lvTxt(lw, r1(p.wind)+" kn")} · ratxa ${lvTxt(lg, r0(p.gust))}</span>
