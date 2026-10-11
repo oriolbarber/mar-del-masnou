@@ -56,7 +56,7 @@ function wmShow(k, scroll){
   const p = hourAt(date, hh) || DATA.hours[k];
   document.querySelectorAll("#wmTable [data-k]").forEach(td => td.classList.toggle("sel", td.dataset.k === k));
   const d = new Date(date + "T12:00:00");
-  const src = p.obs ? `Mesurat a l'estació ${STATIONS[stKey].name}` : `Previsió ${MODELS[p.src === "auto" ? "auto" : model].label}`;
+  const src = p.obs ? `Mesurat a l'estació ${STATIONS[stKey].name}` : `Previsió ${(MODELS[p.src] || MODELS[model]).label}`;
   $("wmCap").innerHTML = `<b>${DAYS_L[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} · ${pad(hh)}:00</b><span class="${p.obs ? "obs" : ""}">${esc(src)}</span>`;
   const c = crit[act], lw = lvWind(p.wind, c), lg = lvGust(p.gust, c), lo = lvWave(p.wave, c), v = verdict(scoreHour(p, c));
   $("wmNow").innerHTML = `<span><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span></span>

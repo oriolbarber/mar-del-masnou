@@ -182,7 +182,9 @@ function build(fc, ma){
 const MODELS = {
   arome: {label:"AROME", api:"meteofrance_seamless", long:"AROME (Météo-France)"},
   auto:  {label:"Combinat", api:null, long:"Combinat d'Open-Meteo (barreja els models que funcionen millor a cada zona i termini)"},
-  ecmwf: {label:"ECMWF", api:"ecmwf_ifs025", long:"ECMWF (centre europeu)"}
+  ecmwf: {label:"ECMWF", api:"ecmwf_ifs025", long:"ECMWF (centre europeu)"},
+  opt:   {label:"Optimista", api:null, long:"Per a cada hora, el model més favorable"},
+  pes:   {label:"Pessimista", api:null, long:"Per a cada hora, el model més desfavorable"}
 };
 // Preferència: «best» = el model que més encerta avui respecte l'estació (per defecte), o un model fix triat per l'usuari
 let modelPref = store.get("mm_model_pref") || "best"; if(modelPref !== "best" && !MODELS[modelPref]) modelPref = "best";
@@ -208,11 +210,21 @@ function parseAlt(j){
 function applyModel(){
   if(!DATA || !DATA.base) return;
   model = pickModel();
-  const alt = MODELS[model].api && DATA.alt ? DATA.alt[MODELS[model].api] : null;
   const hours = {}; let lastAlt = null;
-  for(const t in DATA.base){ const b = DATA.base[t], a = alt && alt[t];
-    hours[t] = a ? Object.assign({}, b, {wind:a.wind, gust:a.gust ?? b.gust, dir:a.dir ?? b.dir, temp:a.temp ?? b.temp, src:model}) : Object.assign({}, b, {src:"auto"});
-    if(a) lastAlt = t; }
+  const withAlt = (b, a, k) => Object.assign({}, b, {wind:a.wind, gust:a.gust ?? b.gust, dir:a.dir ?? b.dir, temp:a.temp ?? b.temp, src:k});
+  if(model === "opt" || model === "pes"){
+    // Optimista / pessimista: per a cada hora, el model que dona millor / pitjor valoració per a l'embarcació triada
+    const c = crit[act], alts = [["arome", DATA.alt?.meteofrance_seamless], ["ecmwf", DATA.alt?.ecmwf_ifs025]];
+    for(const t in DATA.base){ const b = DATA.base[t]; let best = Object.assign({}, b, {src:"auto"}), bs = scoreHour(best, c).score ?? -1;
+      alts.forEach(([k, src]) => { const a = src && src[t]; if(!a) return; const h = withAlt(b, a, k), sc = scoreHour(h, c).score ?? -1;
+        if(model === "opt" ? sc > bs : sc < bs){ best = h; bs = sc; } });
+      hours[t] = best; }
+  } else {
+    const alt = MODELS[model].api && DATA.alt ? DATA.alt[MODELS[model].api] : null;
+    for(const t in DATA.base){ const b = DATA.base[t], a = alt && alt[t];
+      hours[t] = a ? withAlt(b, a, model) : Object.assign({}, b, {src:"auto"});
+      if(a) lastAlt = t; }
+  }
   DATA.hours = hours; DATA.modelEnd = lastAlt;
   applyWaves();
   const h = hours[nowKey()];
@@ -366,6 +378,19 @@ function slotAgg(date, slot, c){
 }
 
 /* ---------- indicador d'idoneïtat ---------- */
+// Valoració de la portada: mitjana de l'última hora mesurada i de les 2 hores següents de previsió
+function scoreWindow(n, c){
+  const now = Date.now(), recs = OBS.key === stKey ? (OBS.recs || []).filter(o => o.t >= now - 3600e3 && o.wind != null) : [];
+  const last = recs.length ? Object.assign({}, n, {wind: recs.reduce((a,o)=>a+o.wind,0)/recs.length, gust: Math.max(...recs.map(o => o.gust ?? o.wind)), dir: vecDir(recs) ?? n.dir}) : n;
+  const nk = nowKey(), d = new Date(nk.slice(0,13) + ":00:00");
+  const next = [1, 2].map(i => { const x = new Date(d.getTime() + i*3600e3); return DATA.hours[localKey(x)]; }).filter(Boolean);
+  const all = [last, ...next].map(p => scoreHour(p, c)).filter(r => r.score != null);
+  if(!all.length) return scoreHour(n, c);
+  const avg = f => { const v = all.map(f).filter(x => x != null); return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null; };
+  const PRI = ["poca llum","tempesta","pluja","terral fort","ratxes fortes","massa vent","onada alta","poc vent"];
+  const why = [...new Set(all.flatMap(r => r.why))].sort((x, y) => (PRI.includes(x) ? PRI.indexOf(x) : 99) - (PRI.includes(y) ? PRI.indexOf(y) : 99));
+  return {score: avg(r => r.score), wind: avg(r => r.wind), wave: avg(r => r.wave), flags: [...new Set(all.flatMap(r => r.flags))], why, n: all.length};
+}
 // Indicador circular: anell exterior = idoneïtat global (per trams de color), anells interiors = vent (blanc/negre) i onades (blau)
 const kOf = sc => sc==null ? "no" : sc >= 60 ? "ideal" : sc >= 35 ? "marg" : "no";
 function gaugeSvg(s, v){
@@ -376,8 +401,12 @@ function gaugeSvg(s, v){
   let g = `<circle r="109" fill="none" stroke="var(--line)" stroke-width="1.2"/>`;
   // anell global, acolorit per trams (vermell < 35, taronja < 60, verd)
   g += `<circle r="100" fill="none" stroke="var(--grid)" stroke-width="12"/>`;
-  if(score > 0){ const end = Math.min(359.9, score/100*360);
-    [[0,35,"no"],[35,60,"marg"],[60,100,"ideal"]].forEach(([a,b,k]) => { const a0 = a/100*360, a1 = Math.min(end, b/100*360); if(a1 > a0) g += `<path d="${arc(a0, a1, 100)}" fill="none" stroke="var(--${k})" stroke-width="12" stroke-linecap="${a1 === end ? "round" : "butt"}"/>`; }); }
+  // degradat continu: vermell a dalt → taronja cap a 5 → verd a 10 (trams petits, perquè l'SVG no té degradat cònic)
+  const gcol = f => f < 0.5 ? `color-mix(in srgb, var(--marg) ${Math.round(f/0.5*100)}%, var(--no))` : `color-mix(in srgb, var(--ideal) ${Math.round((f-0.5)/0.5*100)}%, var(--marg))`;
+  if(score > 0){ const end = Math.min(359.9, score/100*360), st = 3;
+    const [cx0,cy0] = P(0, 100); g += `<circle cx="${cx0}" cy="${cy0}" r="6" fill="${gcol(0)}"/>`;
+    for(let a = 0; a < end; a += st){ const a1 = Math.min(end, a + st + 0.6); g += `<path d="${arc(a, a1, 100)}" fill="none" stroke="${gcol(a/360)}" stroke-width="12"/>`; }
+    const [ex,ey] = P(end, 100); g += `<circle cx="${ex.toFixed(2)}" cy="${ey.toFixed(2)}" r="6" fill="${gcol(end/360)}"/>`; }
   g += ring(s.wave ?? 0, 88, 6, "var(--wave-l)", "color-mix(in srgb, var(--wave-l) 14%, transparent)");
   g += ring(s.wind ?? 0, 79, 6, "var(--ink)", "color-mix(in srgb, var(--ink) 10%, transparent)");
   g += `<path d="M0 -107 l-6 -9 h12 z" fill="var(--ideal)"/>`;
@@ -400,13 +429,12 @@ function gaugeSvg(s, v){
 // apilades per força del vent (verd fluix → vermell fort). El con blanc marca la direcció d'ara.
 // Histograma: minuts de vent per direcció (sectors de 10°). Capa 0 = registrat a l'estació (ambre);
 // capes 1–3 = previsió de la resta del dia, pel codi de colors de l'embarcació (verd, taronja, vermell).
-const ROSE_LAYERS = ["var(--accent-2)","var(--ideal)","var(--marg)","var(--no)"];
+const ROSE_LAYERS = ["reg","fc"];
 function roseHist(recs, fc){
-  const sec = Array.from({length:36}, () => [0,0,0,0]), add = (dir, layer, min) => { if(dir==null) return; sec[Math.round(norm(dir)/10) % 36][layer] += min; };
+  const sec = Array.from({length:36}, () => [0,0]), add = (dir, layer, min) => { if(dir==null) return; sec[Math.round(norm(dir)/10) % 36][layer] += min; };
   const R = (recs || []).filter(o => o.dir!=null && o.wind!=null && o.wind >= 0.5);
   R.forEach((o, i) => { const nx = R[i+1] || R[i-1]; const step = nx ? Math.min(30, Math.max(1, Math.abs(nx.t - o.t)/60000)) : 10; add(o.dir, 0, step); });
-  const c = crit[act];
-  (fc || []).forEach(h => { if(h.wind==null || h.wind < 0.5) return; const l = lvWind(h.wind, c); add(h.dir, l === "ideal" ? 1 : l === "marg" ? 2 : 3, 60); });
+  (fc || []).forEach(h => { if(h.wind!=null && h.wind >= 0.5) add(h.dir, 1, 60); });
   return sec;
 }
 // Hores de previsió d'avui que queden (de la propera hora fins a la posta)
@@ -423,7 +451,7 @@ function roseSvg(o){
   // histograma
   const H = o.hist, tot = H ? H.map(b => b.reduce((x,y)=>x+y,0)) : [], mx = Math.max(1, ...tot), L = R - 10 - ri;
   if(H) H.forEach((bins, i) => { if(!tot[i]) return; let ra = ri + 1; const a0 = i*10 - 4, a1 = i*10 + 4;
-    let cum = 0; bins.forEach((n, b) => { if(!n) return; cum += n; const rb = ri + 1 + Math.sqrt(cum/mx)*L; g += wedge(a0, a1, ra, rb, ROSE_LAYERS[b], b ? "" : ' fill-opacity=".9"'); ra = rb; }); });   // escala d'arrel: les direccions amb poca estona també es veuen
+    let cum = 0; bins.forEach((n, b) => { if(!n) return; cum += n; const rb = ri + 1 + Math.sqrt(cum/mx)*L; g += b ? wedge(a0, a1, ra, rb, "var(--ink)", ' fill-opacity=".14" stroke="var(--ink)" stroke-width=".9" stroke-opacity=".75"') : wedge(a0, a1, ra, rb, "var(--ink)", ' fill-opacity=".85"'); ra = rb; }); });   // escala d'arrel: les direccions amb poca estona també es veuen
   // escala exterior
   for(let a=0; a<360; a+=10){ const big = a%45===0, [x0,y0] = P(a, R), [x1,y1] = P(a, R-(big?9:4));
     g += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${big?"var(--ink)":"var(--muted)"}" stroke-width="${big?2:1}"/>`; }
@@ -495,7 +523,7 @@ function readout(k){
   const date = k.slice(0,10), h = +k.slice(11,13), p = hourAt(date, h); if(!p) return "";
   const c = crit[act], v = verdict(scoreHour(p, c)), d = new Date(date+"T12:00:00");
   const day = date === todayDate() ? "" : DAYS_L[d.getDay()]+" "+d.getDate()+" · ";
-  return `<span class="rd-m">${p.obs ? "Mesurat" : esc(MODELS[p.src === "auto" ? "auto" : model].label)}${p.code != null ? wxIcon(p.code, 18) : ""}</span><span class="rd-h"><b>${day}${pad(h)}:00</b><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span>${v.sub ? `<small class="why">${esc(v.sub)}</small>` : ""}${p.obs ? `<small class="obs">mesurat</small>` : ""}</span>
+  return `<span class="rd-m">${p.obs ? "Mesurat" : esc((MODELS[p.src] || MODELS[model]).label)}${p.code != null ? wxIcon(p.code, 18) : ""}</span><span class="rd-h"><b>${day}${pad(h)}:00</b><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span>${v.sub ? `<small class="why">${esc(v.sub)}</small>` : ""}${p.obs ? `<small class="obs">mesurat</small>` : ""}</span>
     <span class="rd-v"><span>${arrow(p.dir,14)} Vent ${lvTxt(lvWind(p.wind,c), r0(p.wind)+" kn")} ${windAbbr(p.dir)}</span><span>Ratxa ${lvTxt(lvGust(p.gust,c), r0(p.gust)+" kn")}</span>
     <span>Onada ${lvTxt(lvWave(p.wave,c), r1(p.wave)+" m")}${p.hmax!=null ? ` <small>(màx ${p.hmaxE?"≈":""}${r1(p.hmax)})</small>` : ""}${p.tp!=null||p.per!=null ? ` · ${r0(p.tp ?? p.per)} s` : ""}</span></span>`;
 }
@@ -626,7 +654,7 @@ function renderNow(){
   const n = live ? Object.assign({}, fc, {wind:ST.wind, gust:ST.gust, dir:ST.dir, temp:ST.temp}) : fc;
   if(n.wind==null){ $("hero").hidden = true; return; }
   $("hero").hidden = false;
-  const s = scoreHour(n, c), v = verdict(s);
+  const s = scoreWindow(n, c), v = verdict(s);
   const mins = live ? Math.max(0, Math.round((Date.now()-ST.at)/60000)) : null;
   $("src").className = "src"+(live?" live":"");
   $("src").innerHTML = `<span class="dot"></span>${live ? `${STATIONS[stKey].name} · fa ${mins} min` : `${STATIONS[stKey].name}: sense dades · model`}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M7 4l-4 4 4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>`;
@@ -635,8 +663,8 @@ function renderNow(){
   const kind = isOffshore(n.dir) ? "terral" : isOnshore(n.dir) ? "de mar" : "lateral";
   $("rose").innerHTML = roseSvg({dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, live, hist: roseHist(OBS.key === stKey ? OBS.recs : [], roseForecast())});
   // sense repetir el que ja diu el motiu de sota l'indicador
-  const said = (v.sub || "").toLowerCase().split(" · ");
-  $("flags").innerHTML = s.flags.filter(f => !said.includes(f.toLowerCase()) && !(f === "Terral" && said.includes("terral fort"))).map(f => `<span class="flag${INFO_FLAGS.includes(f) ? " info" : ""}">${esc(f)}</span>`).join("");
+  const said = (v.sub || "").toLowerCase().split(" · "), FW = {"Racheig":"vent racheig","Probable pluja":"pluja probable","Terral":"terral"};
+  $("flags").innerHTML = s.flags.filter(f => { const w = FW[f] || f.toLowerCase(); return !said.includes(w) && !(f === "Terral" && said.includes("terral fort")); }).map(f => `<span class="flag${INFO_FLAGS.includes(f) ? " info" : ""}">${esc(f)}</span>`).join("");
   const i = DATA.daily.time.indexOf(todayDate());
   $("stats").innerHTML =
     stat("gust", "Ratxa", lvTxt(lvGust(n.gust,c), r0(n.gust)), "kn", n.gust!=null&&n.wind!=null ? "+"+r0(n.gust-n.wind)+" sobre la mitjana" : "") +
@@ -686,9 +714,10 @@ function renderHours(){
   $("peekHours").textContent = best ? "Millor: "+best.sl.label.toLowerCase()+" · "+verdict(best.a).t.toLowerCase() : "";
 }
 function renderModelBox(errs, bestE){
+  $("peekModel").textContent = modelPref === "best" ? "El que més encerta · " + MODELS[model].label : MODELS[modelPref].label;
   const opt = (v, t) => `<option value="${v}"${modelPref === v ? " selected" : ""}>${t}</option>`;
   $("modelBox").innerHTML = `<label class="model-pick"><span class="sr">Model</span>
-      <select id="modelSel">${opt("best", "El que més encerta avui" + (modelPref === "best" ? ` (${MODELS[model].label})` : ""))}${opt("arome","AROME")}${opt("auto","Combinat")}${opt("ecmwf","ECMWF")}</select></label>
+      <select id="modelSel">${opt("best", "El que més encerta avui" + (modelPref === "best" ? ` (${MODELS[model].label})` : ""))}${opt("opt","Optimista (el model més favorable)")}${opt("pes","Pessimista (el model més desfavorable)")}${opt("arome","AROME")}${opt("auto","Combinat")}${opt("ecmwf","ECMWF")}</select></label>
     ${errs.length ? `<div class="model-err-row"><span class="lbl">Error d'avui vs. estació ${esc(STATIONS[stKey].name)}</span>${errs.map(e => `<span class="${e.mae === bestE ? "best" : ""}${e.k === model ? " cur" : ""}">${esc(MODELS[e.k].label)} <b>${r1(e.mae)} kn</b></span>`).join("")}</div>` : `<p class="note">Encara no hi ha prou hores mesurades avui per comparar els models.</p>`}`;
 }
 function dayName(date, i){ const d = new Date(date+"T12:00:00"); return {name: i===0 ? "Avui" : i===1 ? "Demà" : DAYS_L[d.getDay()], dm: d.getDate()+" "+MONTHS[d.getMonth()]}; }
@@ -716,6 +745,7 @@ function renderWeek(){
 function renderCrit(){
   const c = crit[act];
   $("critBoat").textContent = DEFAULTS[act].name;
+  $("peekCrit").textContent = `${DEFAULTS[act].short} · ideal ${c.iMin}–${c.iMax} kn · onada fins a ${r1(c.wMax)} m`;
   const F = [["min","Vent mínim (kn)",1],["iMin","Ideal des de (kn)",1],["iMax","Ideal fins a (kn)",1],["max","Vent màxim (kn)",1],["gust","Ratxa màxima (kn)",1],["wOk","Onada còmoda (m)",0.1],["wMax","Onada màxima (m)",0.1]];
   $("crit").innerHTML = F.map(([k,l,st]) => `<label for="c_${k}">${l}<input id="c_${k}" type="number" inputmode="decimal" step="${st}" min="0" value="${c[k]}" data-k="${k}"></label>`).join("");
 }
@@ -746,6 +776,7 @@ function applyTheme(){
 let textSize = store.get("mm_size") === "big" ? "big" : "normal";
 function applySize(){ if(textSize === "big") document.documentElement.dataset.size = "big"; else delete document.documentElement.dataset.size; }
 function renderViewPanel(){
+  $("peekVis").textContent = {auto:"Tema automàtic", dark:"Tema fosc", light:"Tema clar"}[theme] + " · text " + (textSize === "big" ? "gran" : "normal");
   document.querySelectorAll("#themeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.theme === theme)));
   document.querySelectorAll("#sizeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.size === textSize)));
 }
@@ -774,7 +805,7 @@ function tick(){ const d = new Date(); $("clock").textContent = DAYS_S[d.getDay(
 tick(); setInterval(tick, 20000);
 
 /* ---------- events ---------- */
-$("actSeg").addEventListener("click", e => { const b = e.target.closest("button[data-act]"); if(!b) return; act = b.dataset.act; store.set("mm_act", act); render(); });
+$("actSeg").addEventListener("click", e => { const b = e.target.closest("button[data-act]"); if(!b) return; act = b.dataset.act; store.set("mm_act", act); if(DATA) applyModel(); render(); if(window.renderWindMap) renderWindMap(); });
 $("week").addEventListener("click", e => { const b = e.target.closest(".wrow"); if(!b) return; openDay = openDay === b.dataset.day ? null : b.dataset.day; renderWeek();
   if(openDay && (!SEL || SEL.slice(0,10) !== openDay)) selectHour(hourKey(openDay, Math.max(7, Math.min(21, +selKey().slice(11,13)))), "chart"); });
 let rsT = null, rsW = innerWidth;
@@ -782,7 +813,7 @@ addEventListener("resize", () => { if(innerWidth === rsW) return; rsW = innerWid
 $("refresh").addEventListener("click", () => { load(); loadStation(); loadObs(); loadInfo(); loadBuoy(); });
 $("src").addEventListener("click", () => { stKey = stKey === "ocata" ? "masnou" : "ocata"; store.set("mm_station_v3", stKey); ST = null; renderNow(); loadStation(); loadObs(); });
 $("crit").addEventListener("change", e => { const k = e.target.dataset.k; if(!k) return; const v = parseFloat(e.target.value); if(isNaN(v)) return;
-  crit[act][k] = v; store.set("mm_crit", crit); renderCrit(); if(DATA){ renderNow(); renderHours(); renderWeek(); } });
+  crit[act][k] = v; store.set("mm_crit", crit); renderCrit(); if(DATA){ applyModel(); renderNow(); renderHours(); renderWeek(); } });
 $("resetCrit").addEventListener("click", () => { crit[act] = JSON.parse(JSON.stringify(DEFAULTS[act])); store.set("mm_crit", crit); render(); });
 
 renderSeg(); renderCrit();

@@ -502,3 +502,19 @@ tr[data-k].sel td:first-child{box-shadow:inset 3px 0 0 var(--sel)}
 .g-why{font-size:.74rem;font-weight:700;color:var(--k);line-height:1.2;min-width:0}
 .flag.info{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
 .hc-read small.why{color:var(--muted);font-weight:700}
+/* configuració amb apartats plegables */
+details.vp-sec{padding:0;border-bottom:1px solid var(--line)}
+details.vp-sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 0;min-height:48px}
+details.vp-sec>summary::-webkit-details-marker{display:none}
+details.vp-sec>summary h3{font-family:var(--f-head);font-size:1rem;text-transform:uppercase;letter-spacing:.06em;margin:0;flex:none}
+details.vp-sec>summary::after{content:"";margin-left:auto;flex:none;width:9px;height:9px;border-right:2.4px solid var(--muted);border-bottom:2.4px solid var(--muted);transform:rotate(45deg) translateY(-3px);transition:transform .15s}
+details.vp-sec[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
+.vp-peek{font-size:.8rem;font-weight:600;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vp-body{display:flex;flex-direction:column;gap:10px;padding:0 0 14px}
+.vp-more{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.vp-more .vp-info{align-self:stretch}
+.now .card-h{flex-wrap:nowrap}
+.now .card-h .lbl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.now .card-h .src{margin-left:auto}
+.now .card-h .ib-i{flex:none}
+.now > .vp-info{margin:4px 0 6px}
