@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=53">
+<link rel="stylesheet" href="app.css?v=54">
 </head>
 <body>
 <div class="app">
@@ -122,8 +122,9 @@
 
 
   <details class="card sec" id="secHours">
-    <summary><h2>Hores d'avui</h2><span class="peek" id="peekHours"></span>
+    <summary><span class="sum-t"><h2 id="hoursTitle">Hores d'avui</h2><span class="peek" id="peekHours"></span></span><button class="ib-i" type="button" data-info="iHours" aria-label="Què mostra aquesta taula" aria-expanded="false">i</button>
       <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <div class="vp-info" id="iHours" hidden></div>
     <div class="sec-body" id="hoursBody"></div>
   </details>
 
@@ -275,9 +276,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=53"></script>
-<script src="trip.js?v=53"></script>
-<script src="maps.js?v=53"></script>
-<script src="windmap.js?v=53"></script>
+<script src="app.js?v=54"></script>
+<script src="trip.js?v=54"></script>
+<script src="maps.js?v=54"></script>
+<script src="windmap.js?v=54"></script>
 </body>
 </html>

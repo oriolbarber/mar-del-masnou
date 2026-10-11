@@ -727,12 +727,17 @@ function waveSrc(p){
 }
 function renderHours(){
   if(window.renderWindMap) setTimeout(renderWindMap, 0);
-  const td = todayDate(); const start = Math.max(7, Math.min(21, +nowKey().slice(11,13) - 3));
+  // tot el dia (7–21 h) del dia que es mira al selector Avui/Demà; les hores passades surten com a «mesurat»
+  const td = viewDay(), isTom = td !== todayDate();
   const errs = modelErrors(), bestE = errs.length ? Math.min(...errs.map(e => e.mae)) : null;
   renderModelBox(errs, bestE);
-  const wf = DATA.wf, lb = lastBuoy();
-  const waveLine = wf && Math.abs(wf.f-1) > 0.05 ? `<p class="note wave-note">Onada: hi ha mar de fons i la previsió s'ajusta ×${r1(wf.f)} per la desviació respecte a les mesures de la ${esc(BUOY.name)}.</p>` : "";
-  $("hoursBody").innerHTML = `${waveLine}${hourTable(td, start, 21)}`;
+  $("hoursTitle").textContent = isTom ? "Hores de demà" : "Hores d'avui";
+  const wf = DATA.wf;
+  $("iHours").innerHTML = `<p>Cada fila és una hora, de les 7 a les 21 h. Les hores que ja han passat diuen <b>mesurat</b> i fan servir les dades de l'estació ${esc(STATIONS[stKey].name)}; la resta són previsió del model ${esc(MODELS[model].label)}. Llisca la taula cap als costats per veure totes les columnes.</p>` +
+    (wf && Math.abs(wf.f-1) > 0.05
+      ? `<p><b>Onada corregida ×${r1(wf.f)}.</b> Ara hi ha mar de fons (onada llarga, de 7 s o més) i la ${esc(BUOY.name)} mesura ${wf.f > 1 ? "més" : "menys"} onada que la que dona el model. Per això, a les hores de mar de fons, la previsió d'onada es multiplica per aquest factor. Amb onada curta no es corregeix.</p>`
+      : `<p>L'onada és la del model. Només es corregeix amb les mesures de la ${esc(BUOY.name)} quan hi ha mar de fons (onada de 7 s o més).</p>`);
+  $("hoursBody").innerHTML = hourTable(td, 7, 21);
   applySel();
   const best = SLOTS.map(sl => ({sl, a:slotAgg(td, sl, crit[act])})).filter(x=>x.a && !x.a.past).sort((a,b)=>b.a.score-a.a.score)[0];
   $("peekHours").textContent = best ? "Millor: "+best.sl.label.toLowerCase()+" · "+verdict(best.a).t.toLowerCase() : "";
@@ -804,7 +809,8 @@ function renderViewPanel(){
   document.querySelectorAll("#themeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.theme === theme)));
   document.querySelectorAll("#sizeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.size === textSize)));
 }
-document.addEventListener("click", e => { const b = e.target.closest && e.target.closest(".ib-i[data-info]"); if(!b) return; const el = $(b.dataset.info); el.hidden = !el.hidden; b.setAttribute("aria-expanded", String(!el.hidden)); });
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest(".ib-i[data-info]"); if(!b) return; const el = $(b.dataset.info); el.hidden = !el.hidden; b.setAttribute("aria-expanded", String(!el.hidden));
+  const sm = b.closest("summary"); if(sm){ e.preventDefault(); if(!el.hidden) sm.parentElement.open = true; } });   // dins d'un desplegable: la (i) no el plega
 $("themeBtn").addEventListener("click", () => { const p = $("viewPanel"); p.hidden = !p.hidden; if(!p.hidden && DATA){ const errs = modelErrors(); renderModelBox(errs, errs.length ? Math.min(...errs.map(e => e.mae)) : null); } $("themeBtn").setAttribute("aria-expanded", String(!p.hidden)); renderViewPanel(); });
 $("themeSeg").addEventListener("click", e => { const b = e.target.closest("button[data-theme]"); if(!b) return; theme = b.dataset.theme; store.set("mm_theme", theme); applyTheme(); renderViewPanel(); });
 $("sizeSeg").addEventListener("click", e => { const b = e.target.closest("button[data-size]"); if(!b) return; textSize = b.dataset.size; store.set("mm_size", textSize); applySize(); renderViewPanel(); });
@@ -833,7 +839,7 @@ $("actSeg").addEventListener("click", e => { const b = e.target.closest("button[
 $("week").addEventListener("click", e => { const b = e.target.closest(".wrow"); if(!b) return; openDay = openDay === b.dataset.day ? null : b.dataset.day; renderWeek();
   if(openDay && (!SEL || SEL.slice(0,10) !== openDay)) selectHour(hourKey(openDay, Math.max(7, Math.min(21, +selKey().slice(11,13)))), "chart"); });
 document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-dayv]"); if(!b || !DATA) return;
-  dayView = b.dataset.dayv; dayViewDate = todayDate(); SEL = null; renderNow(); selectHour(selKey(), "chart"); });
+  dayView = b.dataset.dayv; dayViewDate = todayDate(); SEL = null; renderNow(); renderHours(); selectHour(selKey(), "chart"); });
 let rsT = null, rsW = innerWidth;
 addEventListener("resize", () => { if(innerWidth === rsW) return; rsW = innerWidth; clearTimeout(rsT); rsT = setTimeout(() => { if(DATA){ renderNow(); renderWeek(); } }, 200); });
 $("refresh").addEventListener("click", () => { load(); loadStation(); loadObs(); loadInfo(); loadBuoy(); });

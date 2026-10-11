@@ -547,3 +547,12 @@ details.vp-sec[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
 #windMap .wm-wrap{margin-top:4px}
 /* pantalles estretes: que «GAR · 0,5 m» hi càpiga sencer al costat de la icona del temps */
 @media (max-width:380px){ .slots{gap:6px} .sl{padding:7px 7px} .sl .o{padding-right:15px;letter-spacing:-.01em} .sl .sl-wx{right:3px;bottom:4px} }
+
+/* «Hores d'avui»: (i) al costat del títol; l'explicació queda amagada */
+#secHours>summary .ib-i{margin-left:auto}
+#secHours>summary .chev{margin-left:0}
+#secHours .sum-t{display:flex;flex-direction:column;min-width:0}
+#secHours .sum-t h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#secHours .sum-t .peek{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#secHours .sum-t .peek:empty{display:none}
+#iHours{margin:0 14px 10px}
