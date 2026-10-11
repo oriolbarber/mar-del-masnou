@@ -587,3 +587,8 @@ details.vp-sec[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
 :root[data-size="big"] .wrow .wr em{font-size:.9rem}
 .wrow .d b .dn{display:inline;font-size:inherit;color:inherit;font-weight:inherit;white-space:nowrap}
 .wrow .wr-o b{min-width:0}
+/* rosa una mica més gran: li donem més amplada que a l'indicador i aprofita el marge de la dreta */
+.now-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.18fr);gap:4px}
+.rose svg{max-width:300px;margin-right:-6px}
+:root[data-size="big"] .now-grid{grid-template-columns:minmax(0,1fr)}
+:root[data-size="big"] .rose svg{margin-right:0}
