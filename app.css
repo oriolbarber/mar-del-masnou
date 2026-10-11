@@ -707,3 +707,39 @@ body.cam-open{overflow:hidden}
 .cam-bar{display:block}
 .cam-bar .cam-max-b{width:100%;justify-content:center}
 #mapCam .note{margin-top:8px}
+
+/* ============ pantalla «Nova sortida» ============ */
+.trip-new .card-h{margin-bottom:10px}
+.tn-h{font-size:1.4rem;text-transform:uppercase;margin:0}
+.trip-new .vp-info{margin-bottom:10px}
+.ck-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ck{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px;border:1.5px solid var(--line);border-radius:14px;background:var(--surface-2);color:var(--ink);cursor:pointer;font:inherit;min-width:0}
+.ck .pm-ic{width:30px;height:30px;font-size:16px}
+.ck b{font-family:var(--f-head);font-size:1rem;text-transform:uppercase;letter-spacing:.05em}
+.ck em{font-style:normal;font-size:.8rem;font-weight:700;color:var(--muted)}
+.ck small{display:none}
+.ck.ok em{color:var(--ideal)}.ck.bad em,.ck.wait em{color:var(--no)}.ck.pm-info em{color:var(--marg)}
+.ck.ok .pm-ic{background:var(--ideal);color:#fff}.ck.ok .pm-ic::after{content:"✓"}
+.ck.bad .pm-ic{background:var(--no);color:#fff}.ck.bad .pm-ic::after{content:"!"}
+.ck.wait .pm-ic{background:var(--no);color:#fff}.ck.wait .pm-ic::after{content:"?"}
+.ck.pm-info .pm-ic{background:var(--marg);color:#fff}.ck.pm-info .pm-ic::after{content:"i"}
+.ck[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent)}
+.ck-detail{margin-top:8px;padding:9px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);font-size:.86rem;font-weight:600;line-height:1.35}
+.ck-allow{margin-top:8px;width:100%;min-height:48px}
+.mode-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mode-pick button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px 6px;border:1.5px solid var(--line);border-radius:16px;background:var(--surface);color:var(--muted);cursor:pointer;font:inherit;box-shadow:var(--shadow)}
+.mode-pick b{font-family:var(--f-head);font-size:1.15rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink)}
+.mode-pick small{font-size:.8rem;font-weight:600}
+.mode-pick button[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 10%, var(--surface));color:var(--accent)}
+.mode-pick button[data-mode="eco"][aria-pressed="true"]{background:#000;border-color:#000;color:#9fb2d0}
+.mode-pick button[data-mode="eco"][aria-pressed="true"] b{color:#e8f1ff}
+.tn-name summary{cursor:pointer;list-style:none;font-weight:700;color:var(--accent);padding:6px 4px;min-height:40px;display:flex;align-items:center}
+.tn-name summary::-webkit-details-marker{display:none}
+.tn-name summary span{color:var(--muted);font-weight:600;margin-left:6px}
+.tn-name[open] summary{margin-bottom:6px}
+#startTrip{display:flex;align-items:center;justify-content:center;gap:10px;min-height:64px;font-size:1.25rem}
+.tn-tip{margin:-2px 0 0;display:flex;align-items:center;justify-content:center;gap:6px;font-size:.84rem;font-weight:700;color:var(--muted)}
+:root[data-size="big"] .ck b{font-size:1.2rem}
+:root[data-size="big"] .ck em,:root[data-size="big"] .ck-detail{font-size:1rem}
+:root[data-size="big"] .mode-pick b{font-size:1.35rem}
+:root[data-size="big"] .mode-pick small{font-size:.95rem}

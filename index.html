@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=65">
+<link rel="stylesheet" href="app.css?v=66">
 </head>
 <body>
 <div class="app">
@@ -150,33 +150,30 @@
 <!-- ============ SORTIDA ============ -->
 <section class="view" id="view-trip" hidden>
   <div id="tripIdle" class="view">
-    <article class="card">
-      <h2 style="font-size:1.4rem;text-transform:uppercase">Nova sortida</h2>
-      <p class="note" style="margin-top:6px">Registra la ruta amb el GPS del mòbil i el vent de l'estació del Masnou cada minut. En acabar tindràs un resum amb distància, velocitats, rumbs respecte al vent i el mapa de la ruta.</p>
+    <article class="card trip-new">
+      <div class="card-h"><h2 class="tn-h">Nova sortida</h2><button class="ib-i" type="button" data-info="iTrip" aria-label="Com funciona la gravació" aria-expanded="false">i</button></div>
+      <div class="vp-info" id="iTrip" hidden>
+        <p>Grava la ruta amb el GPS i el vent de l'estació cada minut. En acabar tens la distància, les velocitats, els rumbs respecte al vent i el mapa.</p>
+        <p><b>Amb la pantalla apagada no grava:</b> el navegador atura el GPS. Deixa l'app oberta; el mode estalvi la posa negra i gasta molt poc.</p>
+        <p><b>Vols gravar amb la pantalla apagada?</b> Fes servir una app de GPS (GPS Logger, OsmAnd, Strava o el rellotge) i després importa el GPX a l'Historial: l'app hi afegeix el vent de l'estació.</p>
+      </div>
+      <div class="ck-row" id="ckRow">
+        <button type="button" class="ck" id="pmGeo" data-ck="geo"><i class="pm-ic"></i><b>GPS</b><em></em><small id="pmGeoT">Comprovant…</small></button>
+        <button type="button" class="ck" id="pmWake" data-ck="wake"><i class="pm-ic"></i><b>Pantalla</b><em></em><small id="pmWakeT">Comprovant…</small></button>
+        <button type="button" class="ck pm-info" id="pmBat" data-ck="bat"><i class="pm-ic"></i><b>Bateria</b><em>Revisa</em><small>Perquè Android no tanqui l'app: Ajustaments ▸ Aplicacions ▸ Chrome ▸ Bateria ▸ <b>Sense restriccions</b>.</small></button>
+      </div>
+      <div class="ck-detail" id="ckDetail" hidden></div>
+      <button class="btn sm ck-allow" type="button" id="pmGeoBtn" hidden>Permet la ubicació</button>
     </article>
-    <article class="card perm" id="permCard">
-      <div class="card-h"><span class="lbl">Per gravar la sortida sencera</span></div>
-      <p class="note">Per tenir la ruta, les posicions i les velocitats completes, l'app necessita aquests permisos. <b>Important:</b> una app web no pot fer servir el GPS amb la pantalla apagada (Android i Chrome l'aturen). Per això l'app manté la pantalla encesa; amb el mode estalvi queda negra i gasta molt poc.</p>
-      <ul class="perm-list">
-        <li id="pmGeo"><i class="pm-ic"></i><span><b>Ubicació precisa</b><small id="pmGeoT">Comprovant…</small></span><button class="btn sm" type="button" id="pmGeoBtn" hidden>Permet</button></li>
-        <li id="pmWake"><i class="pm-ic"></i><span><b>Pantalla sempre encesa</b><small id="pmWakeT">Comprovant…</small></span></li>
-        <li id="pmBat" class="pm-info"><i class="pm-ic"></i><span><b>Bateria sense restriccions</b><small>Perquè Android no tanqui l'app: Ajustaments ▸ Aplicacions ▸ Chrome (i Ocata Vent, si apareix) ▸ Bateria ▸ <b>Sense restriccions</b>.</small></span></li>
-        <li id="pmBtn" class="pm-info"><i class="pm-ic"></i><span><b>No premis el botó d'apagar</b><small>Si la pantalla s'apaga, el GPS s'atura i la ruta queda amb forats. L'app t'avisarà dels trams perduts.</small></span></li>
-      </ul>
-      <details class="perm-alt"><summary>Necessites gravar amb la pantalla apagada?</summary>
-        <p class="note">Grava la ruta amb una app de GPS nativa (p. ex. <b>GPS Logger</b>, OsmAnd, Strava o el rellotge) i després, a <b>Historial ▸ Importa GPX</b>, l'Ocata Vent hi afegeix el vent real de l'estació i en fa el resum complet.</p>
-      </details>
-    </article>
-    <article class="card">
-      <label class="switch-row" for="ecoMode">
-        <span><b>Mode estalvi d'energia</b>
-        <span class="note">Pantalla negra només amb les xifres, sense mapa en directe. GPS cada 20 s i vent cada 5 min. Recomanat per a sortides llargues.</span></span>
-        <input type="checkbox" id="ecoMode" class="switch">
-      </label>
-    </article>
-    <label class="card" for="tripName" style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Nom de la sortida (opcional)</span>
-      <input class="field" id="tripName" type="text" placeholder="P. ex. Regata de dissabte" autocomplete="off" style="font-family:var(--f-body)"></label>
-    <button class="cta" type="button" id="startTrip">Comença la sortida</button>
+    <div class="mode-pick" role="group" aria-label="Pantalla durant la sortida">
+      <button type="button" data-mode="normal" aria-pressed="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z M9 4v14 M15 6v14"/></svg><b>Normal</b><small>Dades i mapa</small></button>
+      <button type="button" data-mode="eco" aria-pressed="false"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><b>Estalvi</b><small>Negra · bateria</small></button>
+      <input type="checkbox" id="ecoMode" hidden>
+    </div>
+    <details class="tn-name"><summary>+ Posa-hi un nom <span>(opcional)</span></summary>
+      <input class="field" id="tripName" type="text" placeholder="P. ex. Regata de dissabte" autocomplete="off" style="font-family:var(--f-body)"></details>
+    <button class="cta" type="button" id="startTrip"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>Comença la sortida</button>
+    <p class="tn-tip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v9M6.3 7.3a8 8 0 1 0 11.4 0"/></svg>No premis el botó d'apagar mentre graves</p>
     <div class="msg err" id="tripErr" hidden></div>
   </div>
 
@@ -294,9 +291,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=65"></script>
-<script src="trip.js?v=65"></script>
-<script src="maps.js?v=65"></script>
-<script src="windmap.js?v=65"></script>
+<script src="app.js?v=66"></script>
+<script src="trip.js?v=66"></script>
+<script src="maps.js?v=66"></script>
+<script src="windmap.js?v=66"></script>
 </body>
 </html>

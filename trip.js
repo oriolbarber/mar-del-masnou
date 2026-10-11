@@ -547,7 +547,7 @@ function download(t, kind){
 
 /* ---------- connexions ---------- */
 $("startTrip").addEventListener("click", startTrip);
-$("ecoMode").checked = !!store.get("mm_eco");
+$("ecoMode").checked = !!store.get("mm_eco"); modeSync();
 $("ecoOn").addEventListener("click", () => showRide(true));
 $("logList").addEventListener("change", e => {
   if(e.target.id === "gpxIn" && e.target.files[0]) importGpx(e.target.files[0]);
@@ -576,7 +576,8 @@ window.addEventListener("pagehide", saveLive);
 
 /* ---------- permisos per gravar la sortida ---------- */
 async function permCheck(){
-  const set = (id, cls, txt) => { const li = $(id); if(!li) return; li.className = cls; if(txt != null) li.querySelector("small").textContent = txt; };
+  const WORD = {ok:"A punt", bad:"Falta", wait:"Falta"};
+  const set = (id, cls, txt) => { const li = $(id); if(!li) return; li.className = "ck " + cls; li.querySelector("em").textContent = WORD[cls] || ""; if(txt != null) li.querySelector("small").textContent = txt; };
   if(!("geolocation" in navigator)) set("pmGeo", "bad", "Aquest navegador no té GPS.");
   else {
     let st = "prompt";
@@ -586,11 +587,23 @@ async function permCheck(){
     else if(st === "denied") set("pmGeo", "bad", "Denegada. Activa-la a Ajustaments ▸ Aplicacions ▸ Chrome ▸ Permisos ▸ Ubicació, i a la icona del cadenat de la web.");
     else set("pmGeo", "wait", "Encara no l'has concedida. Toca «Permet».");
   }
-  if("wakeLock" in navigator) set("pmWake", "ok", "Compatible: mentre graves, la pantalla no s'apagarà sola.");
-  else set("pmWake", "bad", "Aquest navegador no ho permet: allarga el temps d'apagada de la pantalla a Ajustaments del mòbil.");
+  if("wakeLock" in navigator) set("pmWake", "ok", "Mentre graves, la pantalla no s'apagarà sola.");
+  else set("pmWake", "bad", "Aquest navegador no pot mantenir la pantalla encesa: allarga el temps d'apagada a Ajustaments del mòbil.");
+  // si alguna cosa falta, se n'ensenya el detall sense haver de tocar
+  const bad = document.querySelector("#ckRow .ck.bad, #ckRow .ck.wait"); ckShow(bad ? bad.dataset.ck : ckOpen);
 }
+let ckOpen = null;
+function ckShow(k){
+  ckOpen = k; const d = $("ckDetail");
+  document.querySelectorAll("#ckRow .ck").forEach(b => b.setAttribute("aria-expanded", String(b.dataset.ck === k)));
+  const b = k && document.querySelector(`#ckRow .ck[data-ck="${k}"]`);
+  d.hidden = !b; if(b) d.innerHTML = b.querySelector("small").innerHTML;
+}
+$("ckRow").addEventListener("click", e => { const b = e.target.closest(".ck"); if(b) ckShow(ckOpen === b.dataset.ck ? null : b.dataset.ck); });
+document.querySelectorAll(".mode-pick [data-mode]").forEach(b => b.addEventListener("click", () => { $("ecoMode").checked = b.dataset.mode === "eco"; store.set("mm_eco", $("ecoMode").checked); modeSync(); }));
+function modeSync(){ const eco = $("ecoMode").checked; document.querySelectorAll(".mode-pick [data-mode]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.mode === "eco") === eco))); }
 document.addEventListener("click", e => { if(e.target.id === "pmGeoBtn"){
-  $("pmGeo").querySelector("small").textContent = "Esperant la resposta…";
+  $("pmGeo").querySelector("small").textContent = "Esperant la resposta…"; ckShow("geo");
   navigator.geolocation.getCurrentPosition(() => permCheck(), () => permCheck(), {enableHighAccuracy:true, timeout:20000});
 } });
 window.addEventListener("mm-view", e => { if(e.detail === "trip" && !LIVE) permCheck(); });
