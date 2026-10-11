@@ -3,7 +3,7 @@
 const WM_BEACH = [41.4795, 2.3265];      // punt fix: platja d'Ocata (on som)
 const WM_ZOOM = 13;
 const WM_H0 = 6, WM_H1 = 22;             // hores que es mostren cada dia
-const WM_GAP = 34;                       // separació mínima (°) entre les dues etiquetes perquè no es tapin
+const WM_GAP = 40;                       // separació mínima (°) entre les dues etiquetes perquè no es tapin
 // Colors: el mateix codi de 3 colors de tota l'app (verd / taronja / vermell segons l'embarcació triada)
 const kv = k => k ? `var(--${k})` : "var(--muted)";
 let wmMap = null, wmPin = null, wmSel = null, wmDrag = false, wmProg = 0;
@@ -38,16 +38,16 @@ function wmTurn(key, target){
   wmAng[key] = prev == null ? target : prev + ((((target - prev) % 360) + 540) % 360 - 180);
   return wmAng[key];
 }
-function wmFlag(key, dir, html, bg, fg){
+function wmFlag(key, dir, html, bg, fg, off){
   const f = wmPin?.getElement()?.querySelector(`[data-f="${key}"]`); if(!f) return;
   if(dir == null){ f.hidden = true; return; }
   f.hidden = false;
   const a = wmTurn(key, dir - 90);                     // l'etiqueta surt cap a on ve el vent / l'onada i la punta toca el punt
   const n = ((a % 360) + 360) % 360, flip = n > 90 && n < 270;   // si quedaria cap per avall, el text es gira
   f.style.setProperty("--a", a + "deg");
-  f.style.setProperty("--bg", bg); f.style.setProperty("--fg", fg);
+  f.style.setProperty("--bg", bg); f.style.setProperty("--fg", fg); f.style.setProperty("--off", (off || 0) + "px");
   f.classList.toggle("flip", flip);
-  f.querySelector(".wm-txt").innerHTML = html;
+  f.querySelector(".wm-txt").innerHTML = `<span class="wm-lbl">${html}</span>`;
 }
 function wmShow(k, scroll){
   if(!DATA || !DATA.hours[k]) return;
@@ -64,13 +64,14 @@ function wmShow(k, scroll){
     <span>Onada ${p.wdir != null ? windName(p.wdir) + " " + r0(p.wdir) + "° · " : ""}${lvTxt(lo, r1(p.wave)+" m")}${p.hmax != null ? ` (màx ${p.hmaxE ? "≈" : ""}${r1(p.hmax)})` : ""} · ${r0(p.tp ?? p.per)} s${p.wobs ? " · boia" : ""}</span>`;
   if(wmEnsureMap()){
     // separa una mica les etiquetes si vent i onada vénen gairebé del mateix lloc
-    let dw = p.dir, dv = p.wave != null ? p.wdir : null;
+    let dw = p.dir, dv = p.wave != null ? p.wdir : null, offW = 0, offV = 0;
     if(dw != null && dv != null){
       const diff = ((dv - dw + 540) % 360) - 180;
-      if(Math.abs(diff) < WM_GAP){ const mid = dw + diff / 2, s = diff >= 0 ? 1 : -1; dw = mid - s * WM_GAP / 2; dv = mid + s * WM_GAP / 2; }
+      // quasi la mateixa direcció: les dues etiquetes en paral·lel, una al costat de l'altra (com a Windy)
+      if(Math.abs(diff) < WM_GAP){ const mid = dw + diff / 2; dw = dv = mid; offW = -15; offV = 14; }
     }
-    wmFlag("w", dw, `<b>${r1(p.wind)}</b> kn<small>R${r0(p.gust)}</small>`, kv(lw), "var(--on-k)");
-    wmFlag("v", dv, `<b>${r1(p.wave)}</b> m<small>${r0(p.tp ?? p.per)} s</small>`, kv(lo), "var(--on-k)");
+    wmFlag("w", dw, `<b>${r1(p.wind)}</b> kn<small>R${r0(p.gust)}</small>`, kv(lw), "var(--on-k)", offW);
+    wmFlag("v", dv, `<b>${r1(p.wave)}</b> m<small>${r0(p.tp ?? p.per)} s</small>`, kv(lo), "var(--on-k)", offV);
   }
   if(scroll){ const td = document.querySelector(`#wmTable th[data-k="${k}"]`); const box = $("wmScroll");
     if(td && box){ wmProg = Date.now(); box.scrollLeft = Math.max(0, td.offsetLeft - box.clientWidth / 2 + td.offsetWidth / 2); } }

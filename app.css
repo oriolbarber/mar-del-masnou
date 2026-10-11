@@ -372,16 +372,15 @@ td small.obs{display:block;font-family:var(--f-body);font-size:.68rem;font-weigh
 .wm-pivot{position:relative;width:0;height:0}
 .wm-dot{position:absolute;left:-7px;top:-7px;width:14px;height:14px;border-radius:50%;background:#dc3427;border:3px solid #fff;box-shadow:0 0 0 1px #0006,0 2px 6px #0007;z-index:3}
 /* etiqueta en forma de bandereta: la punta toca el punt i el cos surt cap a on ve el vent/onada */
-.wm-flag{position:absolute;left:0;top:-15px;height:30px;display:flex;align-items:center;padding-left:6px;transform-origin:0 50%;transform:rotate(var(--a,0deg));transition:transform .65s cubic-bezier(.34,1.3,.5,1);filter:drop-shadow(0 2px 3px #0008);z-index:2;white-space:nowrap}
-.wm-flag::before{content:"";flex:none;width:0;height:0;border-top:15px solid transparent;border-bottom:15px solid transparent;border-right:13px solid var(--bg)}
-.wm-flag .wm-txt{display:flex;align-items:baseline;gap:5px;height:30px;padding:0 10px 0 4px;background:var(--bg);color:var(--fg);border-radius:0 8px 8px 0;font:600 12px/30px var(--f-body);transition:transform .45s ease}
-.wm-flag.flip .wm-txt{transform:rotate(180deg)}
+.wm-flag{position:absolute;left:0;top:-15px;height:30px;display:flex;align-items:center;padding-left:5px;transform-origin:0 50%;transform:rotate(var(--a,0deg)) translateY(var(--off,0px));transition:transform .65s cubic-bezier(.34,1.3,.5,1);filter:drop-shadow(0 2px 3px #0008);z-index:2;white-space:nowrap}
+/* la punta i el quadre són una sola peça (clip-path): no es poden separar en girar */
+.wm-flag .wm-txt{display:flex;align-items:center;height:30px;padding:0 11px 0 17px;background:var(--bg);color:var(--fg);font:600 12px/1 var(--f-body);clip-path:polygon(0 50%,13px 0,calc(100% - 5px) 0,100% 5px,100% calc(100% - 5px),calc(100% - 5px) 100%,13px 100%)}
+.wm-flag .wm-lbl{display:inline-flex;align-items:baseline;gap:5px}
+.wm-flag.flip .wm-lbl{transform:rotate(180deg)}
 .wm-flag .wm-txt b{font-family:var(--f-mono);font-size:16px}
 .wm-flag .wm-txt small{font-size:11px;font-weight:700;opacity:.8}
-.wm-flag.wave{z-index:1}
-.wm-flag.wave .wm-txt{height:26px;line-height:26px}
-.wm-flag.wave::before{border-top-width:13px;border-bottom-width:13px}
-.wm-flag.wave{top:-13px;height:26px}
+.wm-flag.wave{z-index:1;top:-13px;height:26px}
+.wm-flag.wave .wm-txt{height:26px;clip-path:polygon(0 50%,12px 0,calc(100% - 5px) 0,100% 5px,100% calc(100% - 5px),calc(100% - 5px) 100%,12px 100%)}
 .wm-now{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:.8rem;color:var(--muted);font-weight:600}
 .wm-now b{color:var(--ink)}
 .wm-key{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c);margin-right:5px;vertical-align:-1px}

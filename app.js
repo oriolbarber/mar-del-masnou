@@ -218,16 +218,19 @@ function applyModel(){
   const h = hours[nowKey()];
   DATA.now = Object.assign({}, DATA.nowBase, h && h.src !== "auto" ? {wind:h.wind, gust:h.gust, dir:h.dir, temp:h.temp} : {});
   if(h) Object.assign(DATA.now, {wave:h.wave, hmax:h.hmax, hmaxE:h.hmaxE, tp:h.tp, wdir:h.wdir ?? DATA.now.wdir, wobs:h.wobs, wcorr:h.wcorr});
-  const lb = lastBuoy(); if(lb && Date.now() - lb.t < 3*3600e3) Object.assign(DATA.now, {wave:lb.hs, hmax:lb.hmax ?? +(lb.hs*HMAX_K).toFixed(2), hmaxE:lb.hmax == null, tp:lb.tp ?? DATA.now.tp, wdir:lb.dir ?? DATA.now.wdir, wobs:true, wcorr:false, wat:lb.t});
+  const lb = lastBuoy(); if(lb && buoySwell(lb) && Date.now() - lb.t < 3*3600e3) Object.assign(DATA.now, {wave:lb.hs, hmax:lb.hmax ?? +(lb.hs*HMAX_K).toFixed(2), hmaxE:lb.hmax == null, tp:lb.tp ?? DATA.now.tp, wdir:lb.dir ?? DATA.now.wdir, wobs:true, wcorr:false, wat:lb.t});
 }
 /* ---------- onatge: mesura de la boia i correcció de la previsió ---------- */
 const localKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
+// La boia és a Barcelona (mar oberta, 68 m): només representa el Masnou quan hi ha mar de fons (període ≥ 7 s),
+// que arriba igual a tota la costa. La mar de vent curta de Barcelona no arriba al Masnou (comprovat 11 oct.: boia 0,4–0,55 m, platja ≈ 0,2 m).
+const buoySwell = b => !!(b && b.tp != null && b.tp >= 7);
 const lastBuoy = () => { const ks = Object.keys(BU.hours || {}).sort(); return ks.length ? BU.hours[ks[ks.length-1]] : null; };
 // Quant s'ha equivocat el model (a la cel·la del Masnou) respecte la boia les darreres 12 hores mesurades
 function waveFactor(){
   if(!DATA) return null; const nk = nowKey(), mw = DATA.mwave || {};
   const pairs = Object.keys(BU.hours || {}).filter(k => k <= nk).sort().reverse()
-    .map(k => [BU.hours[k].hs, mw[k] ?? DATA.base[k]?.wave]).filter(([b, m]) => b != null && m != null && m > 0.05).slice(0, 12);
+    .filter(k => buoySwell(BU.hours[k])).map(k => [BU.hours[k].hs, mw[k] ?? DATA.base[k]?.wave]).filter(([b, m]) => b != null && m != null && m > 0.05).slice(0, 12);
   if(pairs.length < 4) return null;
   const b = pairs.reduce((a, p) => a + p[0], 0) / pairs.length, m = pairs.reduce((a, p) => a + p[1], 0) / pairs.length;
   return {f: Math.min(2, Math.max(0.6, b / m)), buoy: b, model: m, n: pairs.length};
@@ -236,7 +239,7 @@ function waveFactor(){
 function applyWaves(){
   const wf = waveFactor(), nk = nowKey(), now = Date.now(); DATA.wf = wf;
   for(const t in DATA.hours){ const h = DATA.hours[t], b = BU.hours?.[t];
-    if(b && t <= nk){ Object.assign(h, {wave:b.hs, hmax:b.hmax, tp:b.tp ?? h.tp, wdir:b.dir ?? h.wdir, wobs:true, wfc:h.wave}); continue; }
+    if(b && t <= nk && buoySwell(b)){ Object.assign(h, {wave:b.hs, hmax:b.hmax, tp:b.tp ?? h.tp, wdir:b.dir ?? h.wdir, wobs:true, wfc:h.wave}); continue; }
     if(h.wave != null && wf && Math.abs(wf.f - 1) > 0.05){
       const lead = Math.max(0, (new Date(t).getTime() - now) / 3600e3), w = Math.max(0, 1 - lead / 48);
       if(w > 0){ h.wfc = h.wave; h.wave = +(h.wave * (1 + (wf.f - 1) * w)).toFixed(2); h.wcorr = true; } }
@@ -676,7 +679,7 @@ function renderHours(){
   const errs = modelErrors(), bestE = errs.length ? Math.min(...errs.map(e => e.mae)) : null;
   renderModelBox(errs, bestE);
   const wf = DATA.wf, lb = lastBuoy();
-  const waveLine = lb ? `<p class="note wave-note">${wf && Math.abs(wf.f-1) > 0.05 ? `Onada: previsió ajustada ×${r1(wf.f)} per la desviació respecte a les mesures de la ${esc(BUOY.name)}.` : `Onada: la previsió coincideix amb les mesures de la ${esc(BUOY.name)}.`} Hores passades: mesura de la boia.</p>` : "";
+  const waveLine = wf && Math.abs(wf.f-1) > 0.05 ? `<p class="note wave-note">Onada: hi ha mar de fons i la previsió s'ajusta ×${r1(wf.f)} per la desviació respecte a les mesures de la ${esc(BUOY.name)}.</p>` : "";
   $("hoursBody").innerHTML = `${waveLine}${hourTable(td, start, 21)}`;
   applySel();
   const best = SLOTS.map(sl => ({sl, a:slotAgg(td, sl, crit[act])})).filter(x=>x.a && !x.a.past).sort((a,b)=>b.a.score-a.a.score)[0];
