@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=46">
+<link rel="stylesheet" href="app.css?v=47">
 </head>
 <body>
 <div class="app">
@@ -117,10 +117,6 @@
     <div class="wm-scroll" id="wmScroll" tabindex="0" aria-label="Previsió per hores: toca o llisca per veure-la al mapa"></div>
   </article>
 
-  <button class="cta" type="button" data-go="trip" id="ctaTrip">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v14"/><path d="M12 4l7 11h-7"/><path d="M3 19c3 2 6 2 9 0s6-2 9 0"/></svg>
-    <span id="ctaLabel">Inicia una sortida</span>
-  </button>
 
   <details class="card sec" id="secHours">
     <summary><h2>Hores d'avui</h2><span class="peek" id="peekHours"></span>
@@ -134,6 +130,11 @@
     <div class="sec-body"><div class="wk" id="week"></div></div>
   </details>
 
+
+  <button class="cta" type="button" data-go="trip" id="ctaTrip">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v14"/><path d="M12 4l7 11h-7"/><path d="M3 19c3 2 6 2 9 0s6-2 9 0"/></svg>
+    <span id="ctaLabel">Inicia una sortida</span>
+  </button>
 
   <footer>
     <div>Previsió: Open-Meteo (AROME/ECMWF; onatge MFWAM/ECMWF). Vent mesurat: estació El Masnou (o la d'Ocata Vent). Vent en nusos, onades en metres.</div>
@@ -271,9 +272,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=46"></script>
-<script src="trip.js?v=46"></script>
-<script src="maps.js?v=46"></script>
-<script src="windmap.js?v=46"></script>
+<script src="app.js?v=47"></script>
+<script src="trip.js?v=47"></script>
+<script src="maps.js?v=47"></script>
+<script src="windmap.js?v=47"></script>
 </body>
 </html>
