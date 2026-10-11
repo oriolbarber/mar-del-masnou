@@ -79,6 +79,9 @@ async function sampleWind(){
   saveLive(); renderLive();
 }
 
+// Velocitat màxima creïble per embarcació (kn): per sobre, un punt aïllat es considera un error del GPS
+const MAX_KN = act => act === "windsurf" ? 50 : 35;
+let jumpRej = 0;
 function onPos(pos){
   if(!LIVE) return;
   const c = pos.coords;
@@ -91,7 +94,11 @@ function onPos(pos){
   if(last){
     const dt = (p.t - last.t)/1000; if(dt < 3) return;
     const d = hav(last, p), calc = d/dt*KN;
-    if(calc > 30) return;                 // salt de GPS impossible per a un veler lleuger
+    // Salt de GPS: un punt sol que implicaria una velocitat impossible es descarta.
+    // Però si es repeteix 3 vegades seguides és que realment anem ràpid (o el punt anterior era el dolent):
+    // s'accepta i es continua, perquè la gravació no es pot quedar mai encallada.
+    if(calc > MAX_KN(LIVE.act) && jumpRej < 2){ jumpRej++; gps.textContent = "GPS: punt descartat (salt de " + Math.round(calc) + " kn)"; return; }
+    jumpRej = 0;
     if(p.sog == null) p.sog = +calc.toFixed(2);
     if(p.cog == null && d > 4) p.cog = Math.round(bearing(last, p));
   }
@@ -339,12 +346,12 @@ async function importGpx(file){
   try{
     const xml = new DOMParser().parseFromString(await file.text(), "application/xml");
     const nodes = [...xml.getElementsByTagName("trkpt"), ...xml.getElementsByTagName("rtept")];
-    const pts = [];
+    const pts = []; let rej = 0;
     for(const n of nodes){ const tm = n.getElementsByTagName("time")[0]; if(!tm) continue;
       const p = {t: Date.parse(tm.textContent.trim()), lat: +(+n.getAttribute("lat")).toFixed(6), lon: +(+n.getAttribute("lon")).toFixed(6), acc:null, sog:null, cog:null};
       if(isNaN(p.t) || isNaN(p.lat) || isNaN(p.lon)) continue;
       const last = pts[pts.length-1];
-      if(last){ const dt = (p.t-last.t)/1000; if(dt < 1) continue; const d = hav(last,p); if(d/dt*KN > 30) continue; p.sog = +(d/dt*KN).toFixed(2); if(d > 4) p.cog = Math.round(bearing(last,p)); }
+      if(last){ const dt = (p.t-last.t)/1000; if(dt < 1) continue; const d = hav(last,p); if(d/dt*KN > 50 && rej < 2){ rej++; continue; } rej = 0; p.sog = +(d/dt*KN).toFixed(2); if(d > 4) p.cog = Math.round(bearing(last,p)); }
       pts.push(p);
     }
     if(pts.length < 2){ msg("Aquest fitxer no té una ruta amb hores. Cal un GPX gravat (track), no una ruta planificada."); return; }
