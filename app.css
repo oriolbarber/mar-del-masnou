@@ -701,3 +701,6 @@ body.riding{overflow:hidden}
 .cam-max .cam-hint{display:block;position:absolute;z-index:3;bottom:calc(14px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff;padding:8px 14px;border-radius:999px;font-weight:600;font-size:.9rem;white-space:nowrap;pointer-events:none}
 .cam-max .cam-hint[hidden]{display:none}
 body.cam-open{overflow:hidden}
+
+.cam-bar{display:flex;justify-content:flex-end;margin-top:8px}
+.cam-bar .cam-max-b{min-height:48px;padding:0 16px;font-size:.95rem;background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
