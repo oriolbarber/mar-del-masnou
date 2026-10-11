@@ -386,16 +386,19 @@ td small.obs{display:block;font-family:var(--f-body);font-size:.68rem;font-weigh
 .wm-key{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c);margin-right:5px;vertical-align:-1px}
 .wm-scroll{overflow-x:auto;overflow-y:hidden;margin-top:10px;border:1px solid var(--line);border-radius:12px;touch-action:auto;overscroll-behavior-x:contain;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
 #wmTable{border-collapse:separate;border-spacing:0;font-size:.82rem;min-width:max-content}
-#wmTable th,#wmTable td{padding:5px 0;width:38px;min-width:38px;text-align:center;border-bottom:1px solid var(--grid);font-family:var(--f-mono);white-space:nowrap;cursor:pointer;user-select:none}
+#wmTable th,#wmTable td{padding:5px 0;width:38px;min-width:38px;text-align:center;font-family:var(--f-mono);white-space:nowrap;cursor:pointer;user-select:none}
 #wmTable th.wm-lbl{position:sticky;left:0;z-index:2;background:var(--surface);width:64px;min-width:64px;text-align:left;padding-left:8px;font-family:var(--f-head);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:default;border-right:1px solid var(--line)}
 #wmTable th.wm-day{font-family:var(--f-head);font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink);text-align:left;padding-left:8px;border-left:2px solid var(--line);cursor:default}
 #wmTable th.wm-h{color:var(--muted);font-weight:600}
 #wmTable td.wm-col{background:var(--kt);color:var(--k);font-weight:700}
 #wmTable td.wm-col.soft{background:transparent}
 #wmTable td.soft-t{color:var(--muted)}
-#wmTable .obs{box-shadow:inset 0 2px 0 var(--accent-2)}
 #wmTable th.obs{color:var(--accent-2)}
-#wmTable .sel{outline:2px solid var(--sel);outline-offset:-2px;position:relative;z-index:1}
+/* hora triada: només el perímetre de la columna */
+#wmTable .sel{box-shadow:inset 2px 0 0 var(--sel),inset -2px 0 0 var(--sel);position:relative;z-index:1}
+#wmTable tbody tr:last-child .sel{box-shadow:inset 2px 0 0 var(--sel),inset -2px 0 0 var(--sel),inset 0 -2px 0 var(--sel)}
+#wmTable th,#wmTable td{border-bottom:0}
+#wmTable thead tr:first-child th{border-bottom:1px solid var(--line)}
 #wmTable th.sel{background:var(--sel);color:#fff}
 #wmTable td svg{display:block;margin:0 auto;color:var(--ink)}
 #wmTable .vd{display:inline-block}
