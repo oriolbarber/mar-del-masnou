@@ -876,3 +876,7 @@ footer #iSrc{text-align:left;margin:8px 0}
 #mapCam .card-h,#mapCam2 .card-h{flex-wrap:nowrap}
 #mapCam .card-h .lbl,#mapCam2 .card-h .lbl{min-width:0}
 #mapCam .vp-info,#mapCam2 .vp-info{margin-bottom:10px}
+
+/* ruta · brúixola: llegenda dins les caselles */
+.ride .rc .rl .lg{display:inline-block;width:1.05em;height:1.05em;margin-right:.35em;vertical-align:-.15em}
+.ride .rc .rl .lg svg{width:100%;height:100%;display:block}

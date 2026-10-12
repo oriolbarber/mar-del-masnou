@@ -483,6 +483,9 @@ function roseSvg(o){
   // només si l'onada ve gairebé de la mateixa direcció (< 14°) la icona tapa la lletra; si no, totes dues hi caben al seu lloc
   const wHide = o.wdir!=null ? WABBR.findIndex((t,i) => Math.abs(((o.wdir - i*45 + 540) % 360) - 180) < 14) : -1;
   WABBR.forEach((t,i) => { if(i === wHide) return; const [x,y] = P(i*45, R+12); g += `<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${isOffshore(i*45) ? "var(--marg)" : "var(--sea)"}" font-family="Rajdhani,sans-serif" letter-spacing=".5" class="upr">${t}</text>`; });
+  // punts cardinals (N, E, S, O) per fora de les lletres dels vents; si l'onada hi cau a sobre, la lletra no es dibuixa
+  if(o.card) ["N","E","S","O"].forEach((t,i) => { const a = i*90; if(o.wdir!=null && Math.abs(((o.wdir - a + 540) % 360) - 180) < 22) return; const [x,y] = P(a, R+32);
+    g += `<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)" font-family="Rajdhani,sans-serif" class="upr">${t}</text>`; });
   // con de la direcció del vent actual (l'onada es dibuixa al final, per fora de la circumferència)
   if(o.dir!=null){ const [x0,y0] = P(o.dir-11, R), [x1,y1] = P(o.dir+11, R), [xc,yc] = P(o.dir, ri-6);
     g += `<g class="needle"><path d="M${xc.toFixed(1)} ${yc.toFixed(1)} L${x0.toFixed(1)} ${y0.toFixed(1)} A${R} ${R} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${o.k ? `var(--${o.k})` : "var(--ink)"}" fill-opacity=".38" stroke="${o.k ? `var(--${o.k})` : "var(--ink)"}" stroke-width="2"/></g>`; }
@@ -503,7 +506,8 @@ function roseSvg(o){
     const wLbl = wHide >= 0 ? `<text ${Math.abs(y) > 90 ? `x="-16" y="${t ? -2 : 4}" text-anchor="end"` : `y="${t ? -20 : -13}" text-anchor="middle"`} font-size="11" font-weight="700" fill="${isOffshore(wHide*45) ? "var(--marg)" : "var(--sea)"}" font-family="Rajdhani,sans-serif" letter-spacing=".5">${WABBR[wHide]}</text>` : "";
     g += `<g class="rose-wave" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><g class="upr"><g transform="translate(-12 -${t?18:11})" fill="none" stroke="var(--wave-l)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${WAVE_IC.map(d => `<path d="${d}"/>`).join("")}</g>${t ? `<text y="14" text-anchor="middle" font-size="13" font-weight="700" fill="var(--wave-l)" font-family="Rajdhani,sans-serif">${t}</text>` : ""}${wLbl}</g></g>`;
     wl = `, onada de ${windName(o.wdir)}${o.wave!=null ? ` de ${r1(o.wave)} m` : ""}`; }
-  return `<svg viewBox="-136 -136 272 272" role="img" aria-label="Vent de ${windName(o.dir)} a ${r0(o.wind)} nusos${wl}, amb l'histograma de direccions d'avui">${bg}<g class="rose-rot">${g}</g>${fx}<path class="cmp-mark" d="M0 -${R+19}l-6 -9h12z" fill="var(--accent)"/></svg>`;
+  const vb = o.card ? "-144 -144 288 288" : "-136 -136 272 272";
+  return `<svg viewBox="${vb}" role="img" aria-label="Vent de ${windName(o.dir)} a ${r0(o.wind)} nusos${wl}, amb l'histograma de direccions d'avui">${bg}<g class="rose-rot">${g}</g>${fx}<path class="cmp-mark" d="M0 -${R+19}l-6 -9h12z" fill="var(--accent)"/></svg>`;
 }
 
 /* ---------- brúixola: la rosa s'orienta com el món real ---------- */
