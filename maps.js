@@ -2,7 +2,8 @@
 /* ============ Mar del Masnou · mapes en directe ============ */
 const RV_API = "https://api.rainviewer.com/public/weather-maps.json";
 const WINDY_PRODUCT = {wind:"ecmwf", gust:"ecmwf", waves:"ecmwfWaves", rain:"ecmwf", clouds:"ecmwf"};
-const CAM_URL = "https://plataforma.streamingbarcelona.com/masnou/es/embed/";
+// autoplay/muted: molts reproductors els accepten per URL; si aquest no, no fan res (i cal tocar ▶ dins el vídeo)
+const CAM_URL = "https://plataforma.streamingbarcelona.com/masnou/es/embed/?autoplay=1&muted=1&mute=1&autostart=true";
 const MB_URL = "https://www.meteoblue.com/ca/weather/maps/widget/41.476N2.318E?windAnimation=1&gust=1&satellite=1&cloudsAndPrecipitation=1&temperature=1&sunshine=0&extremeForecastIndex=0&geoloc=fixed&tempunit=C&windunit=kn&lengthunit=metric&zoom=8&autowidth=auto";
 
 let mapKind = "mb", rvMap = null, rvFrames = [], rvLayers = [], rvIdx = 0, rvTimer = null, rvKind = null, rvLoadedAt = 0, windyOv = "waves";
