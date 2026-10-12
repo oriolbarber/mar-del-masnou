@@ -760,12 +760,15 @@ function renderNow(){
   $("src").className = "src"+(live?" live":"");
   $("src").innerHTML = `<span class="dot"></span>${live ? `${STATIONS[stKey].name} · fa ${mins} min` : `${STATIONS[stKey].name}: sense dades · model`}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M7 4l-4 4 4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>`;
   $("src").setAttribute("aria-label", "Estació: "+STATIONS[stKey].name+". Canvia d'estació");
-  $("gauge").innerHTML = gaugeSvg(s, v) + `<div class="grow"><div class="gflag" id="gflag"></div>${v.sub ? `<span class="g-why k-${v.k}">${esc(v.sub)}</span>` : ""}</div>`; renderFlag();
+  $("gauge").innerHTML = gaugeSvg(s, v) + `<div class="grow"><div class="gflag" id="gflag"></div><span class="g-why k-${v.k}">${esc(v.sub || "")}</span></div>`; renderFlag();
   const kind = isOffshore(n.dir) ? "terral" : isOnshore(n.dir) ? "de mar" : "lateral";
   $("rose").innerHTML = `<button type="button" class="cmp-btn" id="cmpBtn" aria-pressed="${cmpOn}" aria-label="Orienta la rosa amb la brúixola del mòbil" title="Orienta amb la brúixola"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 15 12h-6z" fill="currentColor"/><path d="M12 21 9 12h6z" fill="currentColor" opacity=".35"/></svg></button>` + roseSvg({k: lvWind(n.wind, c), dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, wave:fc.wave, live, hist: roseHist(OBS.key === stKey ? OBS.recs : [], roseForecast())}); cmpApply();
   // sense repetir el que ja diu el motiu de sota l'indicador
-  const said = (v.sub || "").toLowerCase().split(" · "), FW = {"Ràfagues":"vent a ràfagues","Probable pluja":"pluja probable","Terral":"terral"};
-  $("flags").innerHTML = s.flags.filter(f => { const w = FW[f] || f.toLowerCase(); return !said.includes(w) && !(f === "Terral" && said.includes("terral fort")); }).map(f => `<span class="flag${INFO_FLAGS.includes(f) ? " info" : ""}">${esc(f)}</span>`).join("");
+  // Els avisos (vermells) van com a text al motiu de sota l'indicador; només la informació (mar de fons, aigua freda) va en etiqueta grisa
+  const FW = {"Ràfagues":"vent a ràfagues","Probable pluja":"pluja probable","Terral":"terral"}, why = (s.why || []).filter(w => !INFO_FLAGS.some(f => f.toLowerCase() === w));
+  s.flags.filter(f => !INFO_FLAGS.includes(f)).forEach(f => { const w = FW[f] || f.toLowerCase(); if(!why.includes(w) && !(f === "Terral" && why.includes("terral fort"))) why.push(w); });
+  const gw = document.querySelector("#gauge .g-why"); if(gw && why.length) gw.textContent = why.join(" · ");
+  $("flags").innerHTML = s.flags.filter(f => INFO_FLAGS.includes(f)).map(f => `<span class="flag info">${esc(f)}</span>`).join("");
   const i = DATA.daily.time.indexOf(todayDate());
   $("stats").innerHTML =
     stat("gust", "Ratxa", lvTxt(lvGust(n.gust,c), r0(n.gust)), "kn", n.gust!=null&&n.wind!=null ? "+"+r0(n.gust-n.wind)+" sobre la mitjana" : "") +

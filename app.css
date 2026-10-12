@@ -861,3 +861,4 @@ footer #iSrc{text-align:left;margin:8px 0}
 .stat .v{font-size:min(1.45rem, 15cqw)}
 .big-stats .stat .v{font-size:min(2rem, 17cqw)}
 :root[data-size="big"] .big-stats .stat .v{font-size:min(2.6rem, 17cqw)}
+.g-why:empty{display:none}
