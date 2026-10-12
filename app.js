@@ -605,7 +605,7 @@ function daySeg(cls, big){
   const td = todayDate(), vd = viewDay(), i = DATA.daily.time.indexOf(td), tm = DATA.daily.time[i+1], last = DATA.daily.time[DATA.daily.time.length-1];
   const other = vd !== td && vd !== tm, sd = d => { const x = new Date(d + "T12:00:00"); return DAYS_S[x.getDay()] + " " + x.getDate(); };
   const b = (v, lbl, on, sub) => `<button type="button" data-dayv="${v}" aria-pressed="${on}">${big ? `<b>${lbl}</b><small>${sub}</small>` : lbl}</button>`;
-  const cal = `<button type="button" class="day-cal" data-daycal aria-pressed="${other}" aria-label="Tria un dia al calendari">${big ? "" : ""}<svg width="${big ? 22 : 18}" height="${big ? 22 : 18}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>${other ? `<span>${sd(vd)}</span>` : big ? "<small>Calendari</small>" : ""}<input type="date" class="day-inp" min="${td}" max="${last}" value="${vd}" tabindex="-1" aria-hidden="true"></button>`;
+  const cal = `<button type="button" class="day-cal" data-daycal aria-pressed="${other}" aria-label="Tria un dia al calendari">${big ? "" : ""}<svg width="${big ? 22 : 18}" height="${big ? 22 : 18}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>${other ? `<span>${sd(vd)}</span>` : big ? "<small>Calendari</small>" : ""}</button>`;
   return `<div class="seg ${cls}" role="group" aria-label="Dia">${b("today", "Avui", vd === td, sd(td))}${tm ? b("tom", "Demà", vd === tm, sd(tm)) : ""}${cal}</div>`;
 }
 const selKey = () => (SEL && DATA && DATA.hours[SEL]) ? SEL : (DATA && viewDay() !== todayDate() ? hourKey(viewDay(), 12) : nowKey());
@@ -938,11 +938,36 @@ $("week").addEventListener("click", e => { const b = e.target.closest(".wrow"); 
 document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-dayv]"); if(!b || !DATA) return;
   dayView = b.dataset.dayv; dayViewDate = todayDate(); SEL = null; renderNow(); renderHours(); selectHour(selKey(), "chart"); });
 function setDay(v){ dayView = v; dayViewDate = todayDate(); SEL = null; renderNow(); renderHours(); selectHour(selKey(), "chart"); }
-document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-daycal]"); if(!b || !DATA) return;
-  const inp = b.querySelector(".day-inp"); try{ inp.showPicker(); }catch(err){ inp.focus(); inp.click(); } });
-document.addEventListener("change", e => { if(!e.target.classList || !e.target.classList.contains("day-inp") || !e.target.value) return;
-  const v = e.target.value, td = todayDate(), i = DATA.daily.time.indexOf(td);
-  setDay(v === td ? "today" : v === DATA.daily.time[i+1] ? "tom" : v); });
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-daycal]"); if(b && DATA) calOpen(); });
+/* ---------- calendari propi: verd = hi ha previsió, vermell = sense dades ---------- */
+// (el calendari del mòbil no deixa pintar els dies, per això en fem un de propi, amb caselles grans)
+const MONTHS_L = ["gener","febrer","març","abril","maig","juny","juliol","agost","setembre","octubre","novembre","desembre"];
+function dayHasData(d){ if(!DATA || !DATA.daily.time.includes(d)) return false; let n = 0; for(let h = 9; h <= 18; h++){ const p = DATA.hours[hourKey(d, h)]; if(p && p.wind != null) n++; } return n >= 6; }
+function calOpen(){
+  calClose();
+  const td = todayDate(), vd = viewDay(), last = new Date(DATA.daily.time[DATA.daily.time.length-1] + "T12:00:00");
+  const iso = x => `${x.getFullYear()}-${pad(x.getMonth()+1)}-${pad(x.getDate())}`;
+  const t0 = new Date(td + "T12:00:00"), months = [[t0.getFullYear(), t0.getMonth()]];
+  if(last.getMonth() !== t0.getMonth() || last.getFullYear() !== t0.getFullYear()) months.push([last.getFullYear(), last.getMonth()]);
+  const month = ([y, m]) => {
+    const first = new Date(y, m, 1, 12), lead = (first.getDay() + 6) % 7, n = new Date(y, m + 1, 0).getDate();
+    let cells = "";
+    for(let i = 0; i < lead; i++) cells += `<span></span>`;
+    for(let dd = 1; dd <= n; dd++){ const d = iso(new Date(y, m, dd, 12)), past = d < td, ok = !past && dayHasData(d);
+      const cls = past ? "past" : ok ? "ok" : "no", lbl = `${dd} ${MONTHS_L[m]}: ${past ? "ja ha passat" : ok ? "amb previsió" : "sense dades"}`;
+      cells += `<button type="button" class="cal-d ${cls}${d === vd ? " sel" : ""}${d === td ? " today" : ""}" ${ok ? `data-cald="${d}"` : "disabled"} aria-label="${lbl}">${dd}</button>`; }
+    return `<div class="cal-m"><div class="cal-mt">${MONTHS_L[m]} ${y}</div><div class="cal-g"><b>dl</b><b>dt</b><b>dc</b><b>dj</b><b>dv</b><b>ds</b><b>dg</b>${cells}</div></div>`; };
+  const el = document.createElement("div"); el.className = "cal-pop"; el.id = "calPop";
+  el.innerHTML = `<div class="cal-card" role="dialog" aria-label="Tria un dia"><div class="cal-h"><b>Tria un dia</b><button type="button" class="cal-x" aria-label="Tanca">✕</button></div>
+    ${months.map(month).join("")}
+    <div class="cal-leg"><span><i class="ok"></i>Amb previsió</span><span><i class="no"></i>Sense dades</span></div></div>`;
+  document.body.appendChild(el);
+  el.addEventListener("click", e => { const d = e.target.closest("[data-cald]");
+    if(d){ const v = d.dataset.cald, i = DATA.daily.time.indexOf(td); calClose(); setDay(v === td ? "today" : v === DATA.daily.time[i+1] ? "tom" : v); return; }
+    if(e.target === el || e.target.closest(".cal-x")) calClose(); });
+}
+function calClose(){ const el = document.getElementById("calPop"); if(el) el.remove(); }
+document.addEventListener("keydown", e => { if(e.key === "Escape") calClose(); });
 let rsT = null, rsW = innerWidth;
 addEventListener("resize", () => { if(innerWidth === rsW) return; rsW = innerWidth; clearTimeout(rsT); rsT = setTimeout(() => { if(DATA){ renderNow(); renderWeek(); } }, 200); });
 $("refresh").addEventListener("click", () => { load(); loadStation(); loadObs(); loadInfo(); loadBuoy(); });

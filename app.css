@@ -783,3 +783,25 @@ body.cam-open{overflow:hidden}
 /* botó de brúixola: el cercle és la vora del botó; dins, només l'agulla, centrada */
 .cmp-btn{width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;line-height:0;box-sizing:border-box}
 .cmp-btn svg{display:block;margin:0}
+
+/* calendari propi */
+.cal-pop{position:fixed;inset:0;z-index:3500;background:rgba(5,12,25,.45);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+.cal-card{width:min(440px,100%);max-height:calc(100dvh - 24px);overflow:auto;background:var(--surface);color:var(--ink);border-radius:20px;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));box-shadow:0 10px 40px #0005}
+.cal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.cal-h b{font-family:var(--f-head);font-size:1.25rem;text-transform:uppercase;letter-spacing:.05em}
+.cal-x{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-size:1.2rem;cursor:pointer}
+.cal-mt{font-family:var(--f-head);font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:8px 2px 6px}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cal-g>b{text-align:center;font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase}
+.cal-d{aspect-ratio:1;min-height:42px;border-radius:12px;border:2px solid transparent;font:700 1.05rem var(--f-mono);cursor:pointer;display:grid;place-items:center}
+.cal-d.ok{background:color-mix(in srgb, var(--ideal) 18%, var(--surface));border-color:var(--ideal);color:var(--ink)}
+.cal-d.no{background:color-mix(in srgb, var(--no) 10%, var(--surface));border-color:color-mix(in srgb, var(--no) 55%, transparent);color:var(--no);cursor:not-allowed}
+.cal-d.past{background:transparent;color:var(--muted);opacity:.45;cursor:default}
+.cal-d.sel{background:var(--ideal);color:#fff;box-shadow:0 0 0 3px color-mix(in srgb, var(--ideal) 35%, transparent)}
+.cal-d.today{text-decoration:underline;text-underline-offset:3px}
+.cal-leg{display:flex;gap:16px;justify-content:center;margin-top:12px;font-size:.88rem;font-weight:600;color:var(--muted)}
+.cal-leg span{display:inline-flex;align-items:center;gap:6px}
+.cal-leg i{width:16px;height:16px;border-radius:5px;border:2px solid}
+.cal-leg i.ok{background:color-mix(in srgb, var(--ideal) 18%, var(--surface));border-color:var(--ideal)}
+.cal-leg i.no{background:color-mix(in srgb, var(--no) 10%, var(--surface));border-color:color-mix(in srgb, var(--no) 55%, transparent)}
+:root[data-size="big"] .cal-d{font-size:1.25rem;min-height:48px}
