@@ -488,7 +488,9 @@ function roseSvg(o){
   // onada: icona + alçada per fora de la rosa, al costat d'on ve
   let wl = "";
   if(o.wdir!=null){ const [x,y] = P(o.wdir, R+17), t = o.wave!=null ? `${r1(o.wave)} m` : "";
-    g += `<g class="rose-wave" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><g class="upr"><g transform="translate(-12 -${t?18:11})" fill="none" stroke="var(--wave-l)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${WAVE_IC.map(d => `<path d="${d}"/>`).join("")}</g>${t ? `<text y="14" text-anchor="middle" font-size="13" font-weight="700" fill="var(--wave-l)" font-family="Rajdhani,sans-serif">${t}</text>` : ""}</g></g>`;
+    // la lletra de la direcció que tapa la icona es posa just a sobre; a dalt i a baix de tot no hi cabria i va al costat
+    const wLbl = wHide >= 0 ? `<text ${Math.abs(y) > 90 ? `x="-16" y="${t ? -2 : 4}" text-anchor="end"` : `y="${t ? -20 : -13}" text-anchor="middle"`} font-size="11" font-weight="700" fill="${isOffshore(wHide*45) ? "var(--marg)" : "var(--sea)"}" font-family="Rajdhani,sans-serif" letter-spacing=".5">${WABBR[wHide]}</text>` : "";
+    g += `<g class="rose-wave" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><g class="upr"><g transform="translate(-12 -${t?18:11})" fill="none" stroke="var(--wave-l)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${WAVE_IC.map(d => `<path d="${d}"/>`).join("")}</g>${t ? `<text y="14" text-anchor="middle" font-size="13" font-weight="700" fill="var(--wave-l)" font-family="Rajdhani,sans-serif">${t}</text>` : ""}${wLbl}</g></g>`;
     wl = `, onada de ${windName(o.wdir)}${o.wave!=null ? ` de ${r1(o.wave)} m` : ""}`; }
   return `<svg viewBox="-136 -136 272 272" role="img" aria-label="Vent de ${windName(o.dir)} a ${r0(o.wind)} nusos${wl}, amb l'histograma de direccions d'avui">${bg}<g class="rose-rot">${g}</g>${fx}<path class="cmp-mark" d="M0 -${R+19}l-6 -9h12z" fill="var(--accent)"/></svg>`;
 }
