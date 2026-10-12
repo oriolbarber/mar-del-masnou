@@ -820,3 +820,9 @@ body.cam-open{overflow:hidden}
 .cmp-btn{top:auto;bottom:0;right:0}
 .now-grid>.rose{align-self:stretch;justify-content:center;padding-bottom:30px}
 .cmp-btn{bottom:-4px}
+/* calendari: les 7 columnes sempre caben (també amb lletra gran) */
+.cal-g{grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal-d{min-width:0;min-height:0;width:100%;padding:0}
+:root[data-size="big"] .cal-d{min-height:0;font-size:clamp(.95rem,4.6vw,1.25rem)}
+:root[data-size="big"] .cal-g>b{font-size:.8rem}
+.cal-card{overflow-x:hidden}
