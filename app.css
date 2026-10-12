@@ -871,3 +871,8 @@ footer #iSrc{text-align:left;margin:8px 0}
 .cam-box{position:relative;overflow:hidden}
 .cam-if{transform-origin:center center;will-change:transform}
 .frame.cam.cam-max .cam-if{width:min(100vw, calc(100dvh * 16 / 9));height:auto;aspect-ratio:16/9;border:0}
+
+/* webcam: (i) a la capçalera */
+#mapCam .card-h,#mapCam2 .card-h{flex-wrap:nowrap}
+#mapCam .card-h .lbl,#mapCam2 .card-h .lbl{min-width:0}
+#mapCam .vp-info,#mapCam2 .vp-info{margin-bottom:10px}
