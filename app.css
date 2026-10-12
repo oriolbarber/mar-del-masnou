@@ -775,3 +775,7 @@ body.cam-open{overflow:hidden}
 .bday .day-cal span{font-size:1.15rem;font-family:var(--f-head);letter-spacing:.04em}
 #wmCap[hidden]{display:none}
 #windMap .hc-read{margin-top:8px}
+
+.imp-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;min-height:52px;font-size:1rem}
+.import-row{flex-wrap:nowrap}
+#iImp{margin-top:8px}

@@ -465,8 +465,9 @@ async function renderList(){
   if(detailMap){ detailMap.remove(); detailMap = null; }
   let trips = []; try{ trips = (await DB.all()) || []; }catch(e){}
   trips.sort((a,b) => b.start - a.start);
-  const imp = `<article class="card"><div class="import-row"><label class="btn" for="gpxIn" style="display:inline-flex;align-items:center">Importa un GPX</label>
-    <span class="note">Ruta gravada amb una altra app o un rellotge (funcionen amb la pantalla apagada). S'hi afegeix el vent real de l'estació d'aquell moment (o el del model si l'estació no en té).</span></div>
+  const imp = `<article class="card"><div class="import-row"><label class="btn imp-btn" for="gpxIn">Importa una sortida (GPX)</label>
+    <button class="ib-i" type="button" data-info="iImp" aria-label="Què és importar una sortida" aria-expanded="false">i</button></div>
+    <div class="vp-info" id="iImp" hidden><p>Una ruta gravada amb una altra app o un rellotge, que sí funcionen amb la pantalla apagada. L'app hi afegeix el vent de l'estació d'aquell moment.</p></div>
     <input type="file" id="gpxIn" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden><div class="msg" id="importMsg" hidden style="margin-top:8px"></div></article>`;
   const persisted = await storagePersisted();
   const bak = `<article class="card"><div class="card-h"><span class="lbl">Còpia de seguretat</span>
