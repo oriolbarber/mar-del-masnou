@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=95">
+<link rel="stylesheet" href="app.css?v=96">
 </head>
 <body>
 <div class="app">
@@ -286,7 +286,7 @@
   </article>
   <article class="card" id="mapCam" hidden>
     <div class="card-h"><span class="lbl">Webcam en directe · Nàutic Masnou</span></div>
-    <div class="frame cam" id="camBox"><iframe id="camFrame" title="Webcam en directe del Nàutic Masnou" sandbox="allow-scripts allow-same-origin" allow="autoplay"></iframe>
+    <div class="frame cam cam-box" id="camBox"><iframe id="camFrame" class="cam-if" title="Webcam en directe del Nàutic Masnou" sandbox="allow-scripts allow-same-origin" allow="autoplay"></iframe>
       <div class="cam-play" id="camPlay" aria-hidden="true"><span><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg>Toca per veure-la</span></div>
       <div class="cam-touch" id="camTouch" aria-hidden="true"></div>
       <div class="cam-ui"><button type="button" class="cam-ub" id="camZoomOut" aria-label="Allunya">−</button><button type="button" class="cam-ub" id="camZoomIn" aria-label="Apropa">+</button><button type="button" class="cam-ub" id="camClose" aria-label="Tanca la pantalla completa">✕</button></div>
@@ -297,8 +297,13 @@
   </article>
   <article class="card" id="mapCam2" hidden>
     <div class="card-h"><span class="lbl">Webcam · Club Natació Badalona</span></div>
-    <div class="frame cam"><iframe id="camFrame2" title="Webcam del Club Natació Badalona" allow="autoplay; fullscreen" allowfullscreen></iframe></div>
-    <p class="note">Platja de Badalona en directe. Font: Windy Webcams, a través de meteoelmasnou.cat.</p>
+    <div class="frame cam cam-box" id="camBox2"><iframe id="camFrame2" class="cam-if" title="Webcam del Club Natació Badalona" allow="autoplay"></iframe>
+      <div class="cam-play" id="camPlay2" aria-hidden="true"><span><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg>Toca per veure-la</span></div>
+      <div class="cam-touch" id="camTouch2" aria-hidden="true"></div>
+      <div class="cam-ui"><button type="button" class="cam-ub" id="camZoomOut2" aria-label="Allunya">−</button><button type="button" class="cam-ub" id="camZoomIn2" aria-label="Apropa">+</button><button type="button" class="cam-ub" id="camClose2" aria-label="Tanca la pantalla completa">✕</button></div>
+      <div class="cam-hint" id="camHint2">Gira el mòbil · pessiga o toca dues vegades per fer zoom</div></div>
+    <div class="cam-bar"><button type="button" class="btn cam-max-b" id="camMax2" aria-label="Webcam de Badalona a pantalla completa"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Pantalla completa i zoom</button></div>
+    <p class="note">Platja de Badalona en directe. Font: Windy Webcams, a través de meteoelmasnou.cat. El zoom es guarda igual que a la del Nàutic.</p>
   </article>
 </section>
 
@@ -324,9 +329,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=95"></script>
-<script src="trip.js?v=95"></script>
-<script src="maps.js?v=95"></script>
-<script src="windmap.js?v=95"></script>
+<script src="app.js?v=96"></script>
+<script src="trip.js?v=96"></script>
+<script src="maps.js?v=96"></script>
+<script src="windmap.js?v=96"></script>
 </body>
 </html>
