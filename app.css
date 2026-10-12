@@ -826,3 +826,7 @@ body.cam-open{overflow:hidden}
 :root[data-size="big"] .cal-d{min-height:0;font-size:clamp(.95rem,4.6vw,1.25rem)}
 :root[data-size="big"] .cal-g>b{font-size:.8rem}
 .cal-card{overflow-x:hidden}
+/* etiquetes d'avís: totes iguals (mateixa alçada, vora i lletra); només canvia el color */
+.flags{align-items:center}
+.flag{display:inline-flex;align-items:center;min-height:32px;padding:4px 12px;border-radius:10px;font-size:.9rem;font-weight:700;line-height:1.1;border:1px solid color-mix(in srgb, var(--no) 35%, transparent);background:var(--no-t);color:var(--no);box-sizing:border-box}
+.flag.info{border-color:var(--line);background:var(--surface-2);color:var(--muted)}
