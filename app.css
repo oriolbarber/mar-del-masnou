@@ -779,3 +779,7 @@ body.cam-open{overflow:hidden}
 .imp-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;min-height:52px;font-size:1rem}
 .import-row{flex-wrap:nowrap}
 #iImp{margin-top:8px}
+
+/* botó de brúixola: el cercle és la vora del botó; dins, només l'agulla, centrada */
+.cmp-btn{width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;line-height:0;box-sizing:border-box}
+.cmp-btn svg{display:block;margin:0}
