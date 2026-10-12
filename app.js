@@ -100,7 +100,7 @@ function scoreHour(p, c){
   let s = Math.min(ws, os), pw = ws, po = os;
   const flags = [];
   if(p.gust!=null && p.gust > c.gust){ s = Math.min(s, 25); pw = Math.min(pw, 25); flags.push("Ratxes fortes"); }
-  else if(p.gust!=null && p.wind!=null && p.wind >= 4 && p.gust / p.wind > 1.6){ s -= 15; pw -= 15; flags.push("Racheig"); }   // racheig relatiu
+  else if(p.gust!=null && p.wind!=null && p.wind >= 4 && p.gust / p.wind > 1.6){ s -= 15; pw -= 15; flags.push("Ràfagues"); }   // racheig relatiu
   if(p.tp!=null && p.tp >= 7 && p.wave!=null && p.wave >= 0.4) flags.push("Mar de fons");   // ja compta a l'onada de platja
   if(isOffshore(p.dir) && p.wind >= 6){
     s = p.wind >= 10 ? Math.min(s-25, 40) : s-25; pw = p.wind >= 10 ? Math.min(pw-25, 40) : pw-25; flags.push("Terral");
@@ -116,7 +116,7 @@ function scoreHour(p, c){
   const why = [];
   if(p.wind < c.min) why.push("poc vent"); else if(p.wind < c.iMin) why.push("vent fluix");
   if(p.wind > c.max) why.push("massa vent"); else if(p.wind > c.iMax) why.push("vent fort");
-  if(flags.includes("Ratxes fortes")) why.push("ratxes fortes"); else if(flags.includes("Racheig")) why.push("vent racheig");
+  if(flags.includes("Ratxes fortes")) why.push("ratxes fortes"); else if(flags.includes("Ràfagues")) why.push("vent a ràfagues");
   if(hb!=null && hb > c.wMax) why.push("onada alta"); else if(hb!=null && hb > c.wOk) why.push("onada");
   [["Terral fort","terral fort"],["Terral","terral"],["Mar de fons","mar de fons"],["Tempesta","tempesta"],["Pluja","pluja"],["Plugim","plugim"],["Probable pluja","pluja probable"],["Poca llum","poca llum"]]
     .forEach(([f,t]) => { if(flags.includes(f) && !why.includes(t) && !(t === "terral" && why.includes("terral fort"))) why.push(t); });
@@ -764,7 +764,7 @@ function renderNow(){
   const kind = isOffshore(n.dir) ? "terral" : isOnshore(n.dir) ? "de mar" : "lateral";
   $("rose").innerHTML = `<button type="button" class="cmp-btn" id="cmpBtn" aria-pressed="${cmpOn}" aria-label="Orienta la rosa amb la brúixola del mòbil" title="Orienta amb la brúixola"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 15 12h-6z" fill="currentColor"/><path d="M12 21 9 12h6z" fill="currentColor" opacity=".35"/></svg></button>` + roseSvg({k: lvWind(n.wind, c), dir:n.dir, wind:n.wind, fcDir:fc.dir, wdir:fc.wdir, wave:fc.wave, live, hist: roseHist(OBS.key === stKey ? OBS.recs : [], roseForecast())}); cmpApply();
   // sense repetir el que ja diu el motiu de sota l'indicador
-  const said = (v.sub || "").toLowerCase().split(" · "), FW = {"Racheig":"vent racheig","Probable pluja":"pluja probable","Terral":"terral"};
+  const said = (v.sub || "").toLowerCase().split(" · "), FW = {"Ràfagues":"vent a ràfagues","Probable pluja":"pluja probable","Terral":"terral"};
   $("flags").innerHTML = s.flags.filter(f => { const w = FW[f] || f.toLowerCase(); return !said.includes(w) && !(f === "Terral" && said.includes("terral fort")); }).map(f => `<span class="flag${INFO_FLAGS.includes(f) ? " info" : ""}">${esc(f)}</span>`).join("");
   const i = DATA.daily.time.indexOf(todayDate());
   $("stats").innerHTML =
