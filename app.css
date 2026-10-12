@@ -855,3 +855,9 @@ footer #iSrc{text-align:left;margin:8px 0}
 @keyframes camPulse{50%{transform:scale(1.05)}}
 .cam-max .cam-play{display:none}
 .cam-play span{white-space:nowrap;font-size:1.1rem}
+
+/* xifres de les caselles: s'encongeixen si no hi caben (p. ex. sortides llargues) */
+.stat{container-type:inline-size}
+.stat .v{font-size:min(1.45rem, 15cqw)}
+.big-stats .stat .v{font-size:min(2rem, 17cqw)}
+:root[data-size="big"] .big-stats .stat .v{font-size:min(2.6rem, 17cqw)}

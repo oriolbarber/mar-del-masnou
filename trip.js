@@ -215,7 +215,7 @@ function summarize(trip){
   let sx=0, sy=0; W.forEach(w => { if(w.dir!=null && w.wind!=null){ sx += Math.sin(rad(w.dir))*w.wind; sy += Math.cos(rad(w.dir))*w.wind; } });
   return {
     dur: (trip.end||Date.now()) - trip.start, distNm: dist/NM, movingS: moving,
-    avgKn: moving ? (dist/NM)/(moving/3600) : 0, maxKn, maxOffM: maxOff, points: trip.pts.length,
+    avgKn: moving >= 60 ? (dist/NM)/(moving/3600) : ((trip.end||Date.now()) - trip.start) > 0 ? (dist/NM)/(((trip.end||Date.now()) - trip.start)/3600e3) : 0, avgAll: moving < 60, maxKn, maxOffM: maxOff, points: trip.pts.length,
     gapN: gaps.length, gapS: gaps.reduce((a, g) => a + (g.to - g.from)/1000, 0),
     wind: {avg: wv.length ? wv.reduce((a,b)=>a+b,0)/wv.length : null, min: wv.length?Math.min(...wv):null, max: wv.length?Math.max(...wv):null,
       gust: gv.length ? Math.max(...gv) : null, dir: (sx||sy) ? norm(Math.atan2(sx,sy)*180/Math.PI) : null, temp: tv.length ? tv.reduce((a,b)=>a+b,0)/tv.length : null,
@@ -519,8 +519,8 @@ async function showTrip(id){
     ${s.gapN ? `<div class="warnbox">⚠ Aquesta sortida té ${s.gapN} ${s.gapN === 1 ? "tram" : "trams"} sense GPS (${fmtDurShort(s.gapS*1000)} en total), segurament amb la pantalla apagada. Al mapa surten amb línia discontínua: la distància hi és en línia recta i la velocitat no s'hi pot calcular.</div>` : ""}
     <div class="big-stats">
       ${stat("dist","Distància", s.distNm.toFixed(2).replace(".",","), "nm", Math.round(s.distNm*NM)+" m")}
-      ${stat("clock","Durada", fmtDurShort(s.dur), "", "En moviment "+fmtDurShort(s.movingS*1000))}
-      ${stat("speed","Vel. mitjana", r1(s.avgKn), "kn", "Només temps en moviment")}
+      ${(() => { const m = Math.round(s.dur/60000); return m >= 60 ? stat("clock","Durada", Math.floor(m/60)+":"+pad(m%60), "h", "En moviment "+fmtDurShort(s.movingS*1000)) : stat("clock","Durada", m, "min", "En moviment "+fmtDurShort(s.movingS*1000)); })()}
+      ${stat("speed","Vel. mitjana", r1(s.avgKn), "kn", s.avgAll ? "Sobre el temps total" : "Només temps en moviment")}
       ${stat("speed","Vel. màxima", r1(s.maxKn), "kn", "Mitjana de 3 trams GPS")}
       ${stat("course","Allunyament", s.maxOffM >= 1000 ? (s.maxOffM/NM).toFixed(2).replace(".",",") : r0(s.maxOffM), s.maxOffM >= 1000 ? "nm" : "m", "Màxim des del punt de sortida")}
       ${stat("gust","Vent", r0(W.avg), "kn", W.avg!=null ? windName(W.dir)+" · "+r0(W.min)+"–"+r0(W.max)+" kn" : "Sense dades")}
