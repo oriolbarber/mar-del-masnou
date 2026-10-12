@@ -992,3 +992,18 @@ window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferr
 $("install").addEventListener("click", async () => { if(!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $("install").hidden = true; });
 window.addEventListener("appinstalled", () => { $("install").hidden = true; });
 if("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+/* ---------- capçalera: s'amaga en fer scroll avall i torna en pujar ---------- */
+(() => {
+  const top = document.querySelector("header.top"); if(!top) return;
+  let lastY = scrollY, acc = 0, ticking = false;
+  const upd = () => { ticking = false; const y = scrollY, d = y - lastY; lastY = y;
+    const vp = document.getElementById("viewPanel");
+    if(y < 60 || (vp && !vp.hidden)){ top.classList.remove("hide"); top.classList.toggle("lift", y > 4); acc = 0; return; }
+    top.classList.add("lift");
+    acc = (d > 0) === (acc > 0) ? acc + d : d;            // compta el recorregut en la mateixa direcció
+    if(acc > 24) top.classList.add("hide"); else if(acc < -16) top.classList.remove("hide"); };
+  addEventListener("scroll", () => { if(!ticking){ ticking = true; requestAnimationFrame(upd); } }, {passive:true});
+  // en canviar de pestanya o obrir un desplegable, que es vegi
+  addEventListener("mm-view", () => top.classList.remove("hide"));
+})();
