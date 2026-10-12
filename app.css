@@ -805,3 +805,10 @@ body.cam-open{overflow:hidden}
 .cal-leg i.ok{background:color-mix(in srgb, var(--ideal) 18%, var(--surface));border-color:var(--ideal)}
 .cal-leg i.no{background:color-mix(in srgb, var(--no) 10%, var(--surface));border-color:color-mix(in srgb, var(--no) 55%, transparent)}
 :root[data-size="big"] .cal-d{font-size:1.25rem;min-height:48px}
+
+/* requadre de l'hora: motiu a la dreta de la 1a fila, font a l'esquerra de la 2a */
+.hc-read .rd-top{flex-wrap:nowrap;align-items:center}
+.hc-read .rd-top .rd-why{flex:1 1 auto;min-width:0;flex-basis:auto;margin:0 0 0 auto;text-align:right;color:var(--k);font-size:.84rem;line-height:1.2;overflow-wrap:normal}
+.hc-read>.rd-m{flex-basis:100%;margin-left:0;justify-content:flex-start;gap:6px}
+.hc-read>.rd-m span{white-space:normal}
+.hc-read .rd-why>span{white-space:nowrap}

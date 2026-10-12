@@ -622,7 +622,8 @@ function readout(k){
   const c = crit[act], v = verdict(scoreHour(p, c)), d = new Date(date+"T12:00:00");
   const day = "";   // la data ja surt a la capçalera de la targeta
   const src = p.obs ? `Mesurat · ${STATIONS[stKey].name}` : `Previsió · ${(MODELS[p.src] || MODELS[model]).label}`;
-  return `<span class="rd-top"><span class="rd-h"><b>${day}${pad(h)}:00</b><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span></span><span class="rd-m${p.obs ? " obs" : ""}" title="${esc(src)}"><span>${esc(src)}</span>${p.code != null ? wxIcon(p.code, 18) : ""}</span></span>${v.sub ? `<span class="rd-why">${esc(v.sub)}</span>` : ""}
+  // fila 1: hora + veredicte (esquerra) i motiu (dreta) · fila 2: font de les dades (esquerra) · fila 3: valors
+  return `<span class="rd-top"><span class="rd-h"><b>${day}${pad(h)}:00</b><span class="tag k-${v.k}"><span class="vd"></span>${v.t}</span></span>${v.sub ? `<span class="rd-why k-${v.k}">${v.sub.split(" · ").map(x => `<span>${esc(x)}</span>`).join(" · ")}</span>` : ""}</span><span class="rd-m${p.obs ? " obs" : ""}" title="${esc(src)}">${p.code != null ? wxIcon(p.code, 18) : ""}<span>${esc(src)}</span></span>
     <span class="rd-v"><span>${arrow(p.dir,14)} Vent ${lvTxt(lvWind(p.wind,c), r0(p.wind)+" kn")} ${windAbbr(p.dir)}</span><span>Ratxa ${lvTxt(lvGust(p.gust,c), r0(p.gust)+" kn")}</span>
     <span>Onada ${lvTxt(lvWave(p.wave,c), r1(p.wave)+" m")}${p.hmax!=null ? ` <small>(màx ${p.hmaxE?"≈":""}${r1(p.hmax)})</small>` : ""}${p.tp!=null||p.per!=null ? ` · ${r0(p.tp ?? p.per)} s` : ""}</span></span>`;
 }
