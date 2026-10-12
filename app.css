@@ -844,3 +844,6 @@ footer #iSrc{text-align:left;margin:8px 0}
 .cmp-btn{width:26px;height:26px;bottom:0;right:0;border-width:1px}
 .cmp-btn svg{width:15px;height:15px}
 .cmp-btn svg{width:22px;height:22px}
+
+/* el vídeo petit també es retalla amb el zoom triat */
+#camBox{overflow:hidden}

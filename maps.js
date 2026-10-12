@@ -57,7 +57,7 @@ function showMapKind(k){
   $("mapWindy").hidden = k !== "windy";
   $("mapMb").hidden = k !== "mb";
   $("mapCam").hidden = k !== "cam";
-  if(k === "cam" && !$("camFrame").src) $("camFrame").src = CAM_URL;
+  if(k === "cam" && !$("camFrame").src){ $("camFrame").src = CAM_URL; setTimeout(camLoad, 50); }
   if(k !== "cam" && $("camFrame").src){ $("camFrame").removeAttribute("src"); } // atura el vídeo (dades) quan no es mira
   if(k === "radar" || k === "sat"){ setTimeout(() => { rvMap && rvMap.invalidateSize(); rvLoad(k); }, 0); }
   else rvPlay(false);
@@ -79,6 +79,12 @@ document.addEventListener("visibilitychange", () => { if(document.visibilityStat
 // L'iframe de la webcam és d'un altre web: no podem tocar el vídeo, però sí fer gran i ampliar el marc sencer.
 // Una capa transparent a sobre recull els gestos (pessigar, arrossegar, doble toc) quan és a pantalla completa.
 const CAM = {on:false, s:1, tx:0, ty:0, pts:new Map(), pinch:null, lastTap:0};
+// Enquadrament per defecte (zoom i desplaçament com a fracció de la mida del vídeo): es recorda el darrer que tria l'usuari
+// i s'aplica tant al vídeo petit com a pantalla completa. Sense cap de desat, un zoom suau que retalla el marc i el cel.
+const CAM_DEF = {s:1.35, fx:0, fy:0};
+function camView(){ const v = store.get("mm_cam_view"); return v && v.s ? v : CAM_DEF; }
+function camLoad(){ const v = camView(), f = $("camFrame"); CAM.s = v.s; CAM.tx = v.fx * f.offsetWidth; CAM.ty = v.fy * f.offsetHeight; camApply(); }
+function camSave(){ const f = $("camFrame"), w = f.offsetWidth || 1, h = f.offsetHeight || 1; store.set("mm_cam_view", {s: +CAM.s.toFixed(3), fx: +(CAM.tx / w).toFixed(4), fy: +(CAM.ty / h).toFixed(4)}); }
 function camApply(){
   const f = $("camFrame"), w = f.offsetWidth, h = f.offsetHeight;
   CAM.s = Math.min(5, Math.max(1, CAM.s));
@@ -90,17 +96,18 @@ function camApply(){
 function camZoomAt(s2, px, py){ const k = s2 / CAM.s; CAM.tx = px - (px - CAM.tx) * k; CAM.ty = py - (py - CAM.ty) * k; CAM.s = s2; camApply(); }
 function camRel(e){ const r = $("camFrame").getBoundingClientRect(); return [e.clientX - (r.left + r.width/2) + CAM.tx, e.clientY - (r.top + r.height/2) + CAM.ty]; }
 async function camOpen(){
-  CAM.on = true; CAM.s = 1; CAM.tx = CAM.ty = 0; const box = $("camBox");
+  CAM.on = true; const box = $("camBox");
   box.classList.add("cam-max"); document.body.classList.add("cam-open"); $("camHint").hidden = false; setTimeout(() => { $("camHint").hidden = true; }, 4000);
   try{ if(box.requestFullscreen) await box.requestFullscreen({navigationUI:"hide"}); else if(box.webkitRequestFullscreen) box.webkitRequestFullscreen(); }catch(e){}
   try{ await screen.orientation.lock("landscape"); }catch(e){}   // Android: gira sol; on no es pot, n'hi ha prou de girar el mòbil
-  setTimeout(camApply, 300);
+  setTimeout(camLoad, 300);
 }
 function camClose(){
-  if(!CAM.on) return; CAM.on = false; CAM.s = 1; CAM.tx = CAM.ty = 0; camApply();
+  if(!CAM.on) return; CAM.on = false; camSave();
   $("camBox").classList.remove("cam-max"); document.body.classList.remove("cam-open");
   try{ screen.orientation.unlock(); }catch(e){}
   try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
+  setTimeout(camLoad, 300);   // el vídeo petit queda amb el mateix enquadrament
 }
 $("camMax").addEventListener("click", camOpen);
 $("camClose").addEventListener("click", camClose);
@@ -108,7 +115,7 @@ $("camZoomIn").addEventListener("click", () => camZoomAt(CAM.s * 1.5, CAM.tx, CA
 $("camZoomOut").addEventListener("click", () => camZoomAt(CAM.s / 1.5, CAM.tx, CAM.ty));
 document.addEventListener("fullscreenchange", () => { if(!document.fullscreenElement && CAM.on) camClose(); });
 document.addEventListener("keydown", e => { if(e.key === "Escape" && CAM.on) camClose(); });
-addEventListener("resize", () => { if(CAM.on) camApply(); });
+addEventListener("resize", () => { if(CAM.on) camApply(); else if(!$("mapCam").hidden) camLoad(); });
 const ct = $("camTouch");
 ct.addEventListener("pointerdown", e => {
   ct.setPointerCapture(e.pointerId); CAM.pts.set(e.pointerId, [e.clientX, e.clientY]);
