@@ -3,8 +3,10 @@
 const RV_API = "https://api.rainviewer.com/public/weather-maps.json";
 const WINDY_PRODUCT = {wind:"ecmwf", gust:"ecmwf", waves:"ecmwfWaves", rain:"ecmwf", clouds:"ecmwf"};
 // autoplay/muted: molts reproductors els accepten per URL; si aquest no, no fan res (i cal tocar ▶ dins el vídeo)
+// Badalona: webcam del Club Natació Badalona (la mateixa que mostra badalona.meteoelmasnou.cat), reproductor de Windy
+const CAM2_URL = "https://webcams.windy.com/webcams/public/embed/player?webcamId=1625826131&playerType=live&loop=0&autoPlay=1&interactive=1";
 const CAM_URL = "https://plataforma.streamingbarcelona.com/masnou/es/embed/?autoplay=1&muted=1&mute=1&autostart=true";
-const MB_URL = "https://www.meteoblue.com/ca/weather/maps/widget/41.476N2.318E?windAnimation=1&gust=1&satellite=1&cloudsAndPrecipitation=1&temperature=1&sunshine=0&extremeForecastIndex=0&geoloc=fixed&tempunit=C&windunit=kn&lengthunit=metric&zoom=8&autowidth=auto";
+const MB_URL = `https://www.meteoblue.com/ca/weather/maps/widget/${LOC.lat.toFixed(3)}N${LOC.lon.toFixed(3)}E?windAnimation=1&gust=1&satellite=1&cloudsAndPrecipitation=1&temperature=1&sunshine=0&extremeForecastIndex=0&geoloc=fixed&tempunit=C&windunit=kn&lengthunit=metric&zoom=8&autowidth=auto`;
 
 let mapKind = "mb", rvMap = null, rvFrames = [], rvLayers = [], rvIdx = 0, rvTimer = null, rvKind = null, rvLoadedAt = 0, windyOv = "waves";
 
@@ -27,7 +29,7 @@ function rvPlay(on){
 }
 async function rvLoad(kind){
   if(!window.L){ $("radarMap").innerHTML = `<div class="empty">No s'ha pogut carregar el mapa. Comprova la connexió.</div>`; return; }
-  if(!rvMap){ rvMap = baseMap($("radarMap")); rvMap.setView([41.6, 2.2], 8); L.circleMarker(HOME, {radius:6, color:"#fff", weight:2, fillColor:"#ff6476", fillOpacity:1}).bindTooltip("El Masnou").addTo(rvMap); }
+  if(!rvMap){ rvMap = baseMap($("radarMap")); rvMap.setView([41.6, 2.2], 8); L.circleMarker(HOME, {radius:6, color:"#fff", weight:2, fillColor:"#ff6476", fillOpacity:1}).bindTooltip(LOC.name).addTo(rvMap); }
   if(kind === rvKind && Date.now() - rvLoadedAt < 5*60*1000) { rvPlay(true); return; }
   rvPlay(false);
   $("radarTime").textContent = "Carregant…";
@@ -49,7 +51,7 @@ async function rvLoad(kind){
 }
 function windyUrl(ov){
   return "https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=%C2%B0C&metricWind=kt"+
-    `&zoom=9&overlay=${ov}&product=${WINDY_PRODUCT[ov]}&level=surface&lat=41.38&lon=2.35&detailLat=41.476&detailLon=2.318&marker=true&message=true`;
+    `&zoom=9&overlay=${ov}&product=${WINDY_PRODUCT[ov]}&level=surface&lat=41.38&lon=2.35&detailLat=${LOC.lat}&detailLon=${LOC.lon}&marker=true&message=true`;
 }
 function showMapKind(k){
   mapKind = k;
@@ -57,7 +59,9 @@ function showMapKind(k){
   $("mapRadar").hidden = k !== "radar";
   $("mapWindy").hidden = k !== "windy";
   $("mapMb").hidden = k !== "mb";
-  $("mapCam").hidden = k !== "cam";
+  $("mapCam").hidden = k !== "cam"; $("mapCam2").hidden = k !== "cam";
+  if(k === "cam" && !$("camFrame2").src) $("camFrame2").src = CAM2_URL;
+  if(k !== "cam" && $("camFrame2").src) $("camFrame2").removeAttribute("src");
   if(k === "cam" && !$("camFrame").src){ $("camFrame").src = CAM_URL; $("camPlay").hidden = false; setTimeout(camLoad, 50); }
   if(k !== "cam" && $("camFrame").src){ $("camFrame").removeAttribute("src"); } // atura el vídeo (dades) quan no es mira
   if(k === "radar" || k === "sat"){ setTimeout(() => { rvMap && rvMap.invalidateSize(); rvLoad(k); }, 0); }
@@ -73,7 +77,7 @@ $("windySeg").addEventListener("click", e => { const b = e.target.closest("butto
 $("radarPlay").addEventListener("click", () => rvPlay(!rvTimer));
 $("radarSlider").addEventListener("input", e => { rvPlay(false); rvShow(+e.target.value); });
 $("radarPlay").innerHTML = PLAY_IC;
-window.addEventListener("mm-view", e => { if(e.detail === "map") showMapKind(mapKind); else { rvPlay(false); camClose(); $("camFrame").removeAttribute("src"); } });
+window.addEventListener("mm-view", e => { if(e.detail === "map") showMapKind(mapKind); else { rvPlay(false); camClose(); $("camFrame").removeAttribute("src"); $("camFrame2").removeAttribute("src"); } });
 document.addEventListener("visibilitychange", () => { if(document.visibilityState !== "visible") rvPlay(false); });
 
 /* ---------- webcam a pantalla completa, girada i amb zoom ---------- */

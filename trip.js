@@ -2,7 +2,7 @@
 /* ============ Mar del Masnou · registre de sortides (GPS + estació) ============ */
 const KN = 1.943844;          // m/s → nusos
 const NM = 1852;              // metres per milla nàutica
-const HOME = [41.4766, 2.3185];
+const HOME = LOC.home;
 const SPEED_COLORS = ["#5aaeff","#3cd0ff","#34e39a","#ffc94a","#ff6476"];
 const SPEED_BINS = [2,4,6,8];  // kn
 const POS = [

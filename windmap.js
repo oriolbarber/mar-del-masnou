@@ -1,6 +1,6 @@
 "use strict";
 /* ============ Ocata Vent · mapa del vent amb taula d'hores lliscant (estil Windy) ============ */
-const WM_BEACH = [41.4795, 2.3265];      // punt fix: platja d'Ocata (on som)
+const WM_BEACH = LOC.wm;      // punt fix: la platja de la ubicació triada
 const WM_ZOOM = 13;
 const WM_H0 = 6, WM_H1 = 22;             // hores que es mostren cada dia
 const WM_GAP = 40;                       // separació mínima (°) entre les dues etiquetes perquè no es tapin

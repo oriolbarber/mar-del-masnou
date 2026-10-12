@@ -862,3 +862,7 @@ footer #iSrc{text-align:left;margin:8px 0}
 .big-stats .stat .v{font-size:min(2rem, 17cqw)}
 :root[data-size="big"] .big-stats .stat .v{font-size:min(2.6rem, 17cqw)}
 .g-why:empty{display:none}
+
+.loc-seg{display:grid;grid-template-columns:1fr 1fr;width:100%}
+.loc-seg button{min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
+.loc-seg button small{font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:.78rem;font-weight:600;opacity:.85}

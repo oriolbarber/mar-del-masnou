@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=94">
+<link rel="stylesheet" href="app.css?v=95">
 </head>
 <body>
 <div class="app">
@@ -37,6 +37,19 @@
   </button>
 </header>
 <div class="card view-panel" id="viewPanel" hidden>
+  <details class="vp-sec">
+    <summary><h3>Ubicació</h3><span class="vp-peek" id="peekLoc"></span></summary>
+    <div class="vp-body">
+      <div class="seg loc-seg" role="group" aria-label="Ubicació" id="locSeg">
+        <button type="button" data-loc="masnou"><b>El Masnou</b><small>Ocata</small></button><button type="button" data-loc="badalona"><b>Badalona</b><small>Patins de Vela</small></button></div>
+      <div class="vp-more"><button class="ib-i" type="button" data-info="iLoc" aria-label="Què canvia amb la ubicació" aria-expanded="false">i</button>
+      <div class="vp-info" id="iLoc" hidden>
+        <p>Canvia la previsió, l'onatge, l'estació, la bandera de la platja i els avisos de Meteocat.</p>
+        <p><b>El Masnou:</b> estacions del Masnou i d'Ocata · bandera de la platja d'Ocata · avisos del Maresme.</p>
+        <p><b>Badalona:</b> estació de Badalona (Dalt de la Vila, a uns 600 m del mar i en alçada: pot marcar menys vent que a la platja) · bandera de la platja dels Patins de Vela · avisos del Barcelonès.</p>
+      </div></div>
+    </div>
+  </details>
   <details class="vp-sec">
     <summary><h3>Visualització</h3><span class="vp-peek" id="peekVis"></span></summary>
     <div class="vp-body">
@@ -282,6 +295,11 @@
     <p class="note">Imatge en directe de la platja i la rampa del Nàutic Masnou. Font: Nàutic Masnou, a través de meteoelmasnou.cat.</p>
     <p class="note">El zoom que posis a pantalla completa es guarda en aquest mòbil i es fa servir també aquí. Per tornar a veure-la sencera, toca dues vegades el vídeo a pantalla completa.</p>
   </article>
+  <article class="card" id="mapCam2" hidden>
+    <div class="card-h"><span class="lbl">Webcam · Club Natació Badalona</span></div>
+    <div class="frame cam"><iframe id="camFrame2" title="Webcam del Club Natació Badalona" allow="autoplay; fullscreen" allowfullscreen></iframe></div>
+    <p class="note">Platja de Badalona en directe. Font: Windy Webcams, a través de meteoelmasnou.cat.</p>
+  </article>
 </section>
 
 <!-- ============ HISTORIAL ============ -->
@@ -306,9 +324,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=94"></script>
-<script src="trip.js?v=94"></script>
-<script src="maps.js?v=94"></script>
-<script src="windmap.js?v=94"></script>
+<script src="app.js?v=95"></script>
+<script src="trip.js?v=95"></script>
+<script src="maps.js?v=95"></script>
+<script src="windmap.js?v=95"></script>
 </body>
 </html>

@@ -1,6 +1,15 @@
 "use strict";
 /* ============ Mar del Masnou · previsió ============ */
-const LOC = {lat:41.4766, lon:2.3185, mlat:41.465, mlon:2.33};
+// Ubicacions: cada una té el punt de previsió, el d'onatge (mar endins), les seves estacions, les platges per a la bandera i el punt del mapa.
+// Les dues platges miren al SE, així que el terral (COAST) és el mateix.
+const LOCS = {
+  masnou:   {name:"El Masnou", lat:41.4766, lon:2.3185, mlat:41.465, mlon:2.33, home:[41.4766, 2.3185], wm:[41.4795, 2.3265],
+             stations:["masnou","ocata"], st:"masnou", smp:[21, 96], beaches:{"081189-p1":"Platja d'Ocata", "081189-p0":"Platja del Masnou"}, flag:"081189-p1"},
+  badalona: {name:"Badalona", lat:41.4461, lon:2.2506, mlat:41.435, mlon:2.262, home:[41.4461, 2.2506], wm:[41.4461, 2.2506],
+             stations:["badalona"], st:"badalona", smp:[13, 95], beaches:{"080155-p5":"Platja dels Patins de Vela", "080155-p6":"Platja dels Pescadors"}, flag:"080155-p5"}
+};
+let locKey = (() => { try{ return JSON.parse(localStorage.getItem("mm_loc")); }catch(e){ return null; } })(); if(!LOCS[locKey]) locKey = "masnou";
+const LOC = LOCS[locKey];
 const COAST = 135; // la platja mira al SE
 const DEFAULTS = {
   pati:     {name:"Patí català", short:"Patí",     min:5,  iMin:8,  iMax:16, max:20, gust:24, wOk:0.6, wMax:1.2},
@@ -157,10 +166,12 @@ let BU = store.get("mm_buoy") || {at:0, hours:{}};
 const HMAX_K = 1.6; // l'onada més alta d'una hora sol ser ~1,6 vegades l'altura significant (a la boia avui: 1,4–2,2)
 const STATIONS = {
   ocata:  {name:"Ocata", url:"https://ocata2.meteoelmasnou.cat/meteotemplateLive.txt"},
-  masnou: {name:"El Masnou",  url:"https://www.meteoelmasnou.cat/meteotemplateLive.txt"}
+  masnou: {name:"El Masnou",  url:"https://www.meteoelmasnou.cat/meteotemplateLive.txt"},
+  // Badalona (Dalt de la Vila, uns 600 m terra endins i en alçada): mateix sistema (Meteotemplate) i mateixa xarxa meteoelmasnou.cat
+  badalona: {name:"Badalona", url:"https://badalona.meteoelmasnou.cat/meteotemplateLive.txt"}
 };
 // Per defecte, El Masnou: l'anemòmetre de l'estació d'Ocata està arrecerat i marca un 40–80 % del vent real (comprovat oct. 2026)
-let stKey = store.get("mm_station_v3"); if(!STATIONS[stKey]) stKey = "masnou";
+let stKey = store.get("mm_station_v3"); if(!LOC.stations.includes(stKey)) stKey = LOC.st;
 
 async function getJSON(u){ const r = await fetch(u, {cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }
 function build(fc, ma){
@@ -289,10 +300,10 @@ async function load(){
   try{
     const [fc, ma, alt] = await Promise.all([getJSON(URL_FC), getJSON(URL_MA).catch(() => getJSON(URL_MA.replace("forecast_days=16", "forecast_days=8"))).catch(()=>null), getJSON(URL_ALT).catch(()=>null)]);
     DATA = build(fc, ma); DATA.alt = parseAlt(alt); applyModel();
-    const {hours, ...toCache} = DATA; store.set("mm_cache", toCache);
+    const {hours, ...toCache} = DATA; store.set("mm_cache_" + locKey, toCache);
     showMsg(DATA.marineOk ? "" : "Sense dades d'onatge ara mateix: la valoració només té en compte el vent.");
   }catch(e){
-    const cached = store.get("mm_cache");
+    const cached = store.get("mm_cache_" + locKey) || (locKey === "masnou" ? store.get("mm_cache") : null);
     if(cached){ DATA = cached; if(!DATA.base){ DATA.base = DATA.hours; DATA.nowBase = DATA.now; } applyModel(); showMsg("Sense connexió. Mostro la previsió desada el "+stamp(cached.fetchedAt)+".", true); }
     else { showMsg("No s'ha pogut carregar la previsió. Comprova la connexió i torna-ho a provar.", true); $("refresh").removeAttribute("aria-busy"); return; }
   }
@@ -324,9 +335,9 @@ async function stationRecords(key, interval, fromMs, toMs){
   const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
   const out = [];
   doc.querySelectorAll("tbody tr").forEach(tr => {
-    const td = [...tr.children].map(x => x.textContent.trim()); const m = td[0]?.match(/(\d\d)\/(\d\d)\/(\d\d)\s+(\d\d):(\d\d)/); if(!m) return;
+    const td = [...tr.children].map(x => x.textContent.trim()); const m = td[0]?.match(/(\d\d)[\/.](\d\d)[\/.](\d{2,4})\s+(\d\d)[:.](\d\d)/); if(!m) return;   // 12/10/26 14:05 o 12.10.2026 14.05
     const w = num(td[1]), g = num(td[2]);
-    out.push({t: new Date(2000+ +m[3], +m[2]-1, +m[1], +m[4], +m[5]).getTime(), wind: w==null?null:w*f, gust: g==null?null:g*f, dir: num(td[3]), temp: num(td[4])});
+    out.push({t: new Date(m[3].length === 4 ? +m[3] : 2000 + +m[3], +m[2]-1, +m[1], +m[4], +m[5]).getTime(), wind: w==null?null:w*f, gust: g==null?null:g*f, dir: num(td[3]), temp: num(td[4])});
   });
   return out.sort((a,b) => a.t - b.t);
 }
@@ -671,16 +682,16 @@ function hourTable(date, h0, h1){
 /* ---------- informació oficial: bandera de bany (Gencat) i avisos (Meteocat) ---------- */
 // Bandera: dades obertes «Estat de les platges de Catalunya» (Platja d'Ocata = 081189-p1, Platja del Masnou = 081189-p0).
 // Avisos: Situacions Meteorològiques de Perill (SMP) de Meteocat per al Maresme (21) i la seva zona de mar (96).
-const BEACHES = {"081189-p1":"Platja d'Ocata", "081189-p0":"Platja del Masnou"};
-const SMP_ZONES = [21, 96];
+const BEACHES = LOC.beaches;
+const SMP_ZONES = LOC.smp;   // Meteocat: comarca i zona de mar (Maresme 21/96 · Barcelonès 13/95)
 let INFO = {flag:null, alerts:[], at:0, ok:{flag:false, smp:false}};
 const ymd = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
 async function loadFlag(){
-  const where = encodeURIComponent("codiplatja='081189-p1' OR codiplatja='081189-p0'");
+  const where = encodeURIComponent(Object.keys(BEACHES).map(c => `codiplatja='${c}'`).join(" OR "));
   const r = await fetch(`https://analisi.transparenciacatalunya.cat/resource/4baz-cjv2.json?$where=${where}&$select=codiplatja,estat_data,estat_bandera,estat_motiubandera,estat_estatmar,estat_meduses&$order=:id DESC&$limit=4`, {cache:"no-store"});
   if(!r.ok) throw 0;
   const rows = await r.json();
-  const row = rows.find(x => x.codiplatja === "081189-p1") || rows[0]; if(!row) return null;
+  const row = rows.find(x => x.codiplatja === LOC.flag) || rows[0]; if(!row) return null;
   const m = (row.estat_data || "").match(/(\d\d)\/(\d\d)\/(\d{4})T(\d\d):(\d\d)/);
   const at = m ? Date.UTC(+m[3], +m[2]-1, +m[1], +m[4], +m[5]) : null;
   const med = (row.estat_meduses || "").split(";").filter(x => x && x !== "N/A").map(x => x.split(",")[0]);
@@ -758,7 +769,7 @@ function renderNow(){
   const s = scoreWindow(n, c), v = verdict(s);
   const mins = live ? Math.max(0, Math.round((Date.now()-ST.at)/60000)) : null;
   $("src").className = "src"+(live?" live":"");
-  $("src").innerHTML = `<span class="dot"></span>${live ? `${STATIONS[stKey].name} · fa ${mins} min` : `${STATIONS[stKey].name}: sense dades · model`}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M7 4l-4 4 4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>`;
+  $("src").innerHTML = `<span class="dot"></span>${live ? `${STATIONS[stKey].name} · fa ${mins} min` : `${STATIONS[stKey].name}: sense dades · model`}${LOC.stations.length > 1 ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M7 4l-4 4 4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>` : ""}`;
   $("src").setAttribute("aria-label", "Estació: "+STATIONS[stKey].name+". Canvia d'estació");
   $("gauge").innerHTML = gaugeSvg(s, v) + `<div class="grow"><div class="gflag" id="gflag"></div><span class="g-why k-${v.k}">${esc(v.sub || "")}</span></div>`; renderFlag();
   const kind = isOffshore(n.dir) ? "terral" : isOnshore(n.dir) ? "de mar" : "lateral";
@@ -932,7 +943,7 @@ function go(v){
 document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if(b) go(b.dataset.go); });
 
 const DAYS_S = ["dg.","dl.","dt.","dc.","dj.","dv.","ds."];
-function tick(){ const d = new Date(); $("clock").textContent = DAYS_S[d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()]+" · "+pad(d.getHours())+":"+pad(d.getMinutes()); }
+function tick(){ const d = new Date(); $("clock").textContent = (locKey !== "masnou" ? LOC.name + " · " : "") + DAYS_S[d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()]+" · "+pad(d.getHours())+":"+pad(d.getMinutes()); }
 tick(); setInterval(tick, 20000);
 
 /* ---------- events ---------- */
@@ -975,7 +986,7 @@ document.addEventListener("keydown", e => { if(e.key === "Escape") calClose(); }
 let rsT = null, rsW = innerWidth;
 addEventListener("resize", () => { if(innerWidth === rsW) return; rsW = innerWidth; clearTimeout(rsT); rsT = setTimeout(() => { if(DATA){ renderNow(); renderWeek(); } }, 200); });
 $("refresh").addEventListener("click", () => { load(); loadStation(); loadObs(); loadInfo(); loadBuoy(); });
-$("src").addEventListener("click", () => { stKey = stKey === "ocata" ? "masnou" : "ocata"; store.set("mm_station_v3", stKey); ST = null; renderNow(); loadStation(); loadObs(); });
+$("src").addEventListener("click", () => { const L = LOC.stations; if(L.length < 2) return; stKey = L[(L.indexOf(stKey) + 1) % L.length]; store.set("mm_station_v3", stKey); ST = null; renderNow(); loadStation(); loadObs(); });
 $("crit").addEventListener("change", e => { const k = e.target.dataset.k; if(!k) return; const v = parseFloat(e.target.value); if(isNaN(v)) return;
   crit[act][k] = v; store.set("mm_crit", crit); renderCrit(); if(DATA){ applyModel(); renderNow(); renderHours(); renderWeek(); } });
 $("resetCrit").addEventListener("click", () => { crit[act] = JSON.parse(JSON.stringify(DEFAULTS[act])); store.set("mm_crit", crit); render(); });
@@ -1009,4 +1020,14 @@ if("serviceWorker" in navigator && location.protocol === "https:") navigator.ser
   addEventListener("scroll", () => { if(!ticking){ ticking = true; requestAnimationFrame(upd); } }, {passive:true});
   // en canviar de pestanya o obrir un desplegable, que es vegi
   addEventListener("mm-view", () => top.classList.remove("hide"));
+})();
+
+/* ---------- ubicació (configuració) ---------- */
+// Canviar d'ubicació recarrega l'app: així totes les dades (previsió, onatge, estació, bandera, avisos) són de la nova
+(() => {
+  const seg = $("locSeg"); if(!seg) return;
+  seg.querySelectorAll("[data-loc]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.loc === locKey)));
+  $("peekLoc").textContent = LOC.name;
+  seg.addEventListener("click", e => { const b = e.target.closest("[data-loc]"); if(!b || b.dataset.loc === locKey) return;
+    store.set("mm_loc", b.dataset.loc); store.set("mm_station_v3", LOCS[b.dataset.loc].st); location.reload(); });
 })();
