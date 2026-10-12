@@ -145,11 +145,11 @@ const URL_FC = `https://api.open-meteo.com/v1/forecast?latitude=${LOC.lat}&longi
   "&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m"+
   "&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m"+
   "&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min"+
-  "&wind_speed_unit=kn&timezone=Europe%2FMadrid&forecast_days=7";
+  "&wind_speed_unit=kn&timezone=Europe%2FMadrid&forecast_days=16";   // 16 dies: el calendari en pot mostrar dues setmanes
 const URL_MA = `https://marine-api.open-meteo.com/v1/marine?latitude=${LOC.mlat}&longitude=${LOC.mlon}`+
   "&hourly=wave_height,wave_direction,wave_period,swell_wave_peak_period,sea_surface_temperature"+
   "&current=wave_height,wave_direction,wave_period,sea_surface_temperature"+
-  "&cell_selection=sea&timezone=Europe%2FMadrid&forecast_days=7&past_days=1";
+  "&cell_selection=sea&timezone=Europe%2FMadrid&forecast_days=16&past_days=1";
 // Boia de Barcelona II (Ports de l'Estat, xarxa costanera REDCOS): 41,32 N 2,20 E, 68 m de fondària, ~20 km al SO del Masnou.
 // Mesura cada hora l'altura significant (Hm0), l'altura màxima, el període de pic i la direcció de procedència.
 const BUOY = {name:"boia de Barcelona", url:"https://portus.puertos.es/portussvr/api/RTData/station/1731?locale=es", params:[13,17,34,20]};
@@ -287,7 +287,7 @@ function showMsg(text, err){ const m = $("msg"); m.hidden = !text; m.textContent
 async function load(){
   $("refresh").setAttribute("aria-busy","true");
   try{
-    const [fc, ma, alt] = await Promise.all([getJSON(URL_FC), getJSON(URL_MA).catch(()=>null), getJSON(URL_ALT).catch(()=>null)]);
+    const [fc, ma, alt] = await Promise.all([getJSON(URL_FC), getJSON(URL_MA).catch(() => getJSON(URL_MA.replace("forecast_days=16", "forecast_days=8"))).catch(()=>null), getJSON(URL_ALT).catch(()=>null)]);
     DATA = build(fc, ma); DATA.alt = parseAlt(alt); applyModel();
     const {hours, ...toCache} = DATA; store.set("mm_cache", toCache);
     showMsg(DATA.marineOk ? "" : "Sense dades d'onatge ara mateix: la valoració només té en compte el vent.");
@@ -596,8 +596,18 @@ let SEL = null;
 // Avui / Demà: automàtic (demà a partir d'una hora abans de la posta) fins que l'usuari en tria un
 let dayView = null, dayViewDate = null;
 function autoDay(){ const i = DATA.daily.time.indexOf(todayDate()); const set = i >= 0 ? new Date(DATA.daily.sunset[i]).getTime() : Infinity; return Date.now() >= set - 3600e3 ? "tom" : "today"; }
+// dayView: "today", "tom" o una data concreta triada al calendari (AAAA-MM-DD)
 function viewDay(){ if(dayViewDate !== todayDate()){ dayView = null; dayViewDate = todayDate(); }
+  if(dayView && /^\d{4}-/.test(dayView)) return DATA.daily.time.includes(dayView) && dayView >= todayDate() ? dayView : todayDate();
   const i = DATA.daily.time.indexOf(todayDate()); return (dayView || autoDay()) === "tom" && DATA.daily.time[i+1] ? DATA.daily.time[i+1] : todayDate(); }
+// selector de dia: Avui · Demà · calendari (fins on arriba la previsió)
+function daySeg(cls, big){
+  const td = todayDate(), vd = viewDay(), i = DATA.daily.time.indexOf(td), tm = DATA.daily.time[i+1], last = DATA.daily.time[DATA.daily.time.length-1];
+  const other = vd !== td && vd !== tm, sd = d => { const x = new Date(d + "T12:00:00"); return DAYS_S[x.getDay()] + " " + x.getDate(); };
+  const b = (v, lbl, on, sub) => `<button type="button" data-dayv="${v}" aria-pressed="${on}">${big ? `<b>${lbl}</b><small>${sub}</small>` : lbl}</button>`;
+  const cal = `<button type="button" class="day-cal" data-daycal aria-pressed="${other}" aria-label="Tria un dia al calendari">${big ? "" : ""}<svg width="${big ? 22 : 18}" height="${big ? 22 : 18}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>${other ? `<span>${sd(vd)}</span>` : big ? "<small>Calendari</small>" : ""}<input type="date" class="day-inp" min="${td}" max="${last}" value="${vd}" tabindex="-1" aria-hidden="true"></button>`;
+  return `<div class="seg ${cls}" role="group" aria-label="Dia">${b("today", "Avui", vd === td, sd(td))}${tm ? b("tom", "Demà", vd === tm, sd(tm)) : ""}${cal}</div>`;
+}
 const selKey = () => (SEL && DATA && DATA.hours[SEL]) ? SEL : (DATA && viewDay() !== todayDate() ? hourKey(viewDay(), 12) : nowKey());
 // Gràfic del dia de l'hora triada (dins la targeta del mapa de vent)
 let chartDate = null;
@@ -768,7 +778,7 @@ function renderNow(){
   const row = (k, v, u, x) => `<div class="brow"><span class="bk">${k}</span><span class="bv">${v}${u?`<small>${u}</small>`:""}</span>${x?`<span class="bx">${x}</span>`:""}</div>`;
   const bvd = viewDay(), bTom = bvd !== td, dlab = d => { const x = new Date(d + "T12:00:00"); return DAYS_S[x.getDay()] + " " + x.getDate(); };
   const tmD = DATA.daily.time[DATA.daily.time.indexOf(td) + 1];
-  const bday = `<div class="seg bday" role="group" aria-label="Dia"><button type="button" data-dayv="today" aria-pressed="${!bTom}"><b>Avui</b><small>${dlab(td)}</small></button>${tmD ? `<button type="button" data-dayv="tom" aria-pressed="${bTom}"><b>Demà</b><small>${dlab(tmD)}</small></button>` : ""}</div>`;
+  const bday = daySeg("bday", true);
   const bslots = SLOTS.map(sl => { const a = slotAgg(bvd, sl, c); if(!a) return ""; const vv = verdict(a);
     return `<div class="bslot k-${vv.k}${a.past?" past":""}"><span class="bk">${sl.label}</span><span class="tag"><span class="vd"></span>${vv.t}</span><span class="bw">${r0(a.wind)}<small>/${r0(a.gust)} kn</small></span><span class="bx">${windName(a.dir)} · ${r1(a.wave)} m</span></div>`; }).join("");
   $("bigNow").innerHTML = `<div class="bverdict k-${v.k}"><span>${v.t}</span><small>${s.score ?? "–"}/100</small></div>
@@ -787,8 +797,8 @@ function renderNow(){
       <div class="w">${arrow(a.dir,13)}${r0(a.wind)}<small>/${r0(a.gust)} kn</small></div><div class="o">${windAbbr(a.dir)} · ${r1(a.wave)} m</div>${a.code != null ? `<span class="sl-wx">${wxIcon(a.code, 18)}</span>` : ""}</div>`; }).join("");
   const ol = $("outlook");
   const dd = new Date(vd + "T12:00:00");
-  ol.innerHTML = `<div class="card-h" style="margin-bottom:6px"><div class="seg day-seg" role="group" aria-label="Dia"><button type="button" data-dayv="today" aria-pressed="${!isTom}">Avui</button><button type="button" data-dayv="tom" aria-pressed="${isTom}">Demà</button></div>
-    <span class="lbl day-date">${DAYS_L[dd.getDay()]} ${dd.getDate()} ${MONTHS[dd.getMonth()]}</span></div>
+  ol.innerHTML = `<div class="card-h" style="margin-bottom:6px">${daySeg("day-seg", false)}
+    ${vd === td || vd === DATA.daily.time[DATA.daily.time.indexOf(td)+1] ? `<span class="lbl day-date">${DAYS_L[dd.getDay()]} ${dd.getDate()} ${MONTHS[dd.getMonth()]}</span>` : ""}</div>
     <div class="slots">${slots}</div>`;
   renderDayChart(); applySel();
 }
@@ -803,7 +813,8 @@ function renderHours(){
   const td = viewDay(), isTom = td !== todayDate();
   const errs = modelErrors(), bestE = errs.length ? Math.min(...errs.map(e => e.mae)) : null;
   renderModelBox(errs, bestE);
-  $("hoursTitle").textContent = isTom ? "Hores de demà" : "Hores d'avui";
+  const tdI = DATA.daily.time.indexOf(todayDate()), hx = new Date(td + "T12:00:00");
+  $("hoursTitle").textContent = td === todayDate() ? "Hores d'avui" : td === DATA.daily.time[tdI+1] ? "Hores de demà" : `Hores ${DAYS_L[hx.getDay()].toLowerCase()} ${hx.getDate()}`;
   const wf = DATA.wf;
   $("iHours").innerHTML = `<p>Cada fila és una hora, de les 7 a les 21 h. Les hores que ja han passat diuen <b>mesurat</b> i fan servir les dades de l'estació ${esc(STATIONS[stKey].name)}; la resta són previsió del model ${esc(MODELS[model].label)}. Llisca la taula cap als costats per veure totes les columnes.</p>` +
     (wf && Math.abs(wf.f-1) > 0.05
@@ -824,7 +835,7 @@ function renderModelBox(errs, bestE){
 function dayName(date, i){ const d = new Date(date+"T12:00:00"); return {name: i===0 ? "Avui" : i===1 ? "Demà" : DAYS_L[d.getDay()], dm: d.getDate()+" "+MONTHS[d.getMonth()]}; }
 function renderWeek(){
   const c = crit[act], D = DATA.daily; let html = "", good = 0;
-  D.time.forEach((date, i) => {
+  D.time.forEach((date, i) => { if(i >= 7) return;   // la llista setmanal: 7 dies (la resta, al calendari)
     const dn = dayName(date, i), aggs = SLOTS.map(sl => slotAgg(date, sl, c));
     const pills = aggs.map((a,j) => { if(!a) return `<span class="pill k-no" style="opacity:.3">–</span>`; const vv = verdict(a); if(!a.past && a.score>=60) good++;
       return `<span class="pill k-${vv.k}" title="${SLOTS[j].label}: ${vv.t}"${a.past?' style="opacity:.45"':""}>${SLOTS[j].ab}</span>`; }).join("");
@@ -926,6 +937,12 @@ $("week").addEventListener("click", e => { const b = e.target.closest(".wrow"); 
   if(openDay && (!SEL || SEL.slice(0,10) !== openDay)) selectHour(hourKey(openDay, Math.max(7, Math.min(21, +selKey().slice(11,13)))), "chart"); });
 document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-dayv]"); if(!b || !DATA) return;
   dayView = b.dataset.dayv; dayViewDate = todayDate(); SEL = null; renderNow(); renderHours(); selectHour(selKey(), "chart"); });
+function setDay(v){ dayView = v; dayViewDate = todayDate(); SEL = null; renderNow(); renderHours(); selectHour(selKey(), "chart"); }
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-daycal]"); if(!b || !DATA) return;
+  const inp = b.querySelector(".day-inp"); try{ inp.showPicker(); }catch(err){ inp.focus(); inp.click(); } });
+document.addEventListener("change", e => { if(!e.target.classList || !e.target.classList.contains("day-inp") || !e.target.value) return;
+  const v = e.target.value, td = todayDate(), i = DATA.daily.time.indexOf(td);
+  setDay(v === td ? "today" : v === DATA.daily.time[i+1] ? "tom" : v); });
 let rsT = null, rsW = innerWidth;
 addEventListener("resize", () => { if(innerWidth === rsW) return; rsW = innerWidth; clearTimeout(rsT); rsT = setTimeout(() => { if(DATA){ renderNow(); renderWeek(); } }, 200); });
 $("refresh").addEventListener("click", () => { load(); loadStation(); loadObs(); loadInfo(); loadBuoy(); });
