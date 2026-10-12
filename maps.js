@@ -58,7 +58,7 @@ function showMapKind(k){
   $("mapWindy").hidden = k !== "windy";
   $("mapMb").hidden = k !== "mb";
   $("mapCam").hidden = k !== "cam";
-  if(k === "cam" && !$("camFrame").src){ $("camFrame").src = CAM_URL; setTimeout(camLoad, 50); }
+  if(k === "cam" && !$("camFrame").src){ $("camFrame").src = CAM_URL; $("camPlay").hidden = false; setTimeout(camLoad, 50); }
   if(k !== "cam" && $("camFrame").src){ $("camFrame").removeAttribute("src"); } // atura el vídeo (dades) quan no es mira
   if(k === "radar" || k === "sat"){ setTimeout(() => { rvMap && rvMap.invalidateSize(); rvLoad(k); }, 0); }
   else rvPlay(false);
@@ -137,3 +137,7 @@ ct.addEventListener("pointermove", e => {
 const ctUp = e => { CAM.pts.delete(e.pointerId); if(CAM.pts.size < 2) CAM.pinch = null; };
 ct.addEventListener("pointerup", ctUp); ct.addEventListener("pointercancel", ctUp);
 ct.addEventListener("wheel", e => { e.preventDefault(); const [px, py] = camRel(e); camZoomAt(CAM.s * (e.deltaY < 0 ? 1.2 : 1/1.2), px, py); }, {passive:false});
+
+// Avís «Toca el vídeo»: amb zoom, el ▶ del reproductor pot quedar fora de la vista. L'avís deixa passar el toc (no el bloqueja)
+// i s'amaga quan detectem que s'ha tocat dins el vídeo (la finestra perd el focus i el focus passa a l'iframe).
+addEventListener("blur", () => setTimeout(() => { if(document.activeElement === $("camFrame")) $("camPlay").hidden = true; }, 0));
