@@ -888,7 +888,7 @@ function applyTheme(){
 let textSize = store.get("mm_size") === "big" ? "big" : "normal";
 function applySize(){ if(textSize === "big") document.documentElement.dataset.size = "big"; else delete document.documentElement.dataset.size; }
 function renderViewPanel(){
-  $("peekVis").textContent = {auto:"Tema automàtic", dark:"Tema fosc", light:"Tema clar"}[theme] + " · text " + (textSize === "big" ? "gran" : "normal");
+  $("peekVis").textContent = {auto:"Tema automàtic", dark:"Tema fosc", light:"Tema clar"}[theme] + " · lletra " + (textSize === "big" ? "gran" : "petita");
   document.querySelectorAll("#themeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.theme === theme)));
   document.querySelectorAll("#sizeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.size === textSize)));
 }
