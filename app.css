@@ -839,3 +839,7 @@ footer .src-line{display:flex;align-items:center;justify-content:space-between;g
 footer .src-line>span{min-width:0}
 footer .ib-i{width:26px;height:26px;font-size:.85rem}
 footer #iSrc{text-align:left;margin:8px 0}
+/* botó de brúixola petit a la cantonada de baix: no fa créixer la targeta */
+.now-grid>.rose{padding-bottom:0}
+.cmp-btn{width:26px;height:26px;bottom:0;right:0;border-width:1px}
+.cmp-btn svg{width:15px;height:15px}
