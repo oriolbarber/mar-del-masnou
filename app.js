@@ -397,7 +397,9 @@ function scoreWindow(n, c){
 }
 // Indicador circular: anell exterior = idoneïtat global (per trams de color), anells interiors = vent (blanc/negre) i onades (blau)
 const kOf = sc => sc==null ? "no" : sc >= 60 ? "ideal" : sc >= 35 ? "marg" : "no";
-function gaugeSvg(s, v){
+function gaugeSvg(s0, v){
+  // els arcs es dibuixen amb el mateix valor arrodonit que es mostra (x/10), perquè la llargada quadri amb el número
+  const q = x => x == null ? null : Math.round(x/10)*10, s = Object.assign({}, s0, {score: q(s0.score), wind: q(s0.wind), wave: q(s0.wave)});
   const score = s.score, P = (a, r) => [Math.sin(a*Math.PI/180)*r, -Math.cos(a*Math.PI/180)*r];
   const arc = (a0, a1, r) => { const [x0,y0] = P(a0,r), [x1,y1] = P(a1,r); return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${a1-a0>180?1:0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
   const ring = (val, r, w, color, track) => { let g = `<circle r="${r}" fill="none" stroke="${track}" stroke-width="${w}"/>`;
