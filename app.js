@@ -466,7 +466,7 @@ function roseForecast(){
 const WAVE_IC = ["M4 10.5C6 8 3 5.5 7 9C9 11 10.5 11 12 9C13.5 7 9.5 5 16.5 9C18 10 19.5 11 18 10","M4 17C6.5 13.5 3 12 7.5 15.5C9 17 10.5 17 12 15C13.5 13 10 11.5 16.5 15C18 16 19.5 17 16.5 15"];
 const waveIc = sz => `<svg class="wave-ic" width="${sz}" height="${sz}" viewBox="2 3 18 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${WAVE_IC.map(d => `<path d="${d}"/>`).join("")}</svg>`;
 function roseSvg(o){
-  const R = 100, ri = 38, P = (a, r) => [Math.sin(a*Math.PI/180)*r, -Math.cos(a*Math.PI/180)*r];
+  const R = 100, ri = 38, Z = o.card ? 1.35 : 1, P = (a, r) => [Math.sin(a*Math.PI/180)*r, -Math.cos(a*Math.PI/180)*r];
   const wedge = (a0, a1, ra, rb, fill, extra) => { const [x0,y0] = P(a0,rb), [x1,y1] = P(a1,rb), [x2,y2] = P(a1,ra), [x3,y3] = P(a0,ra);
     return `<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} A${rb} ${rb} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} L${x2.toFixed(1)} ${y2.toFixed(1)} A${ra} ${ra} 0 0 0 ${x3.toFixed(1)} ${y3.toFixed(1)} Z" fill="${fill}"${extra||""}/>`; };
   // Tot el que té direcció va dins #roseRot, que gira amb la brúixola; el centre i el número queden quiets
@@ -482,17 +482,19 @@ function roseSvg(o){
     g += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${big?"var(--ink)":"var(--muted)"}" stroke-width="${big?2:1}"/>`; }
   // només si l'onada ve gairebé de la mateixa direcció (< 14°) la icona tapa la lletra; si no, totes dues hi caben al seu lloc
   const wHide = o.wdir!=null ? WABBR.findIndex((t,i) => Math.abs(((o.wdir - i*45 + 540) % 360) - 180) < 14) : -1;
-  WABBR.forEach((t,i) => { if(i === wHide) return; const [x,y] = P(i*45, R+12); g += `<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${isOffshore(i*45) ? "var(--marg)" : "var(--sea)"}" font-family="Rajdhani,sans-serif" letter-spacing=".5" class="upr">${t}</text>`; });
+  WABBR.forEach((t,i) => { if(i === wHide) return; const [x,y] = P(i*45, R+12*Z); g += `<text x="${x.toFixed(1)}" y="${(y+4*Z).toFixed(1)}" text-anchor="middle" font-size="${11*Z}" font-weight="700" fill="${isOffshore(i*45) ? "var(--marg)" : "var(--sea)"}" font-family="Rajdhani,sans-serif" letter-spacing=".5" class="upr">${t}</text>`; });
   // punts cardinals (N, E, S, O) per fora de les lletres dels vents; si l'onada hi cau a sobre, la lletra no es dibuixa
-  if(o.card) ["N","E","S","O"].forEach((t,i) => { const a = i*90; if(o.wdir!=null && Math.abs(((o.wdir - a + 540) % 360) - 180) < 22) return; const [x,y] = P(a, R+32);
-    g += `<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)" font-family="Rajdhani,sans-serif" class="upr">${t}</text>`; });
+  if(o.card) ["N","E","S","O"].forEach((t,i) => { let a = i*90; const dw = o.wdir!=null ? ((o.wdir - a + 540) % 360) - 180 : 99;
+    if(Math.abs(dw) < 24) a += dw > 0 ? dw - 24 : dw + 24;   // l'onada hi cau a sobre: la lletra es desplaça una mica al costat
+    const [x,y] = P(a, R+48);
+    g += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><text class="upr" y="7" text-anchor="middle" font-size="21" font-weight="800" fill="var(--ink)" font-family="Rajdhani,sans-serif">${t}</text></g>`; });
   // con de la direcció del vent actual (l'onada es dibuixa al final, per fora de la circumferència)
   if(o.dir!=null){ const [x0,y0] = P(o.dir-11, R), [x1,y1] = P(o.dir+11, R), [xc,yc] = P(o.dir, ri-6);
     g += `<g class="needle"><path d="M${xc.toFixed(1)} ${yc.toFixed(1)} L${x0.toFixed(1)} ${y0.toFixed(1)} A${R} ${R} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${o.k ? `var(--${o.k})` : "var(--ink)"}" fill-opacity=".38" stroke="${o.k ? `var(--${o.k})` : "var(--ink)"}" stroke-width="2"/></g>`; }
   // pantalla de ruta: rumb del GPS (agulla blava) i direcció cap a la base (punt verd)
-  if(o.cog!=null){ const [x0,y0] = P(o.cog, ri-2), [x1,y1] = P(o.cog, R-6), [a1,b1] = P(o.cog, R+2), [a2,b2] = P(o.cog-5, R-12), [a3,b3] = P(o.cog+5, R-12);
-    g += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/><polygon points="${a1.toFixed(1)},${b1.toFixed(1)} ${a2.toFixed(1)},${b2.toFixed(1)} ${a3.toFixed(1)},${b3.toFixed(1)}" fill="var(--accent)"/>`; }
-  if(o.home!=null){ const [x,y] = P(o.home, R-14); g += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><g class="upr"><circle r="11" fill="var(--ideal)" stroke="var(--surface)" stroke-width="2"/><path d="M-5 1 0-4 5 1M-3.5 0v4.5h7V0" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></g></g>`; }
+  if(o.cog!=null){ const y0 = -(ri-2), yh = -(R-22), y1 = -(R+4);   // fletxa de cartell: tija gruixuda i punta ampla
+    g += `<polygon transform="rotate(${o.cog})" points="-6,${y0} 6,${y0} 6,${yh} 15,${yh} 0,${y1} -15,${yh} -6,${yh}" fill="var(--accent)" stroke="var(--surface)" stroke-width="2.5" stroke-linejoin="round" paint-order="stroke"/>`; }
+  if(o.home!=null){ const [x,y] = P(o.home, R-14*Z); g += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${Z})"><g class="upr"><circle r="11" fill="var(--ideal)" stroke="var(--surface)" stroke-width="2"/><path d="M-5 1 0-4 5 1M-3.5 0v4.5h7V0" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></g></g>`; }
   let fx = `<circle r="${ri-4}" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>`;
   if(o.cv != null) fx += `<text y="-13" text-anchor="middle" font-size="10" font-weight="700" fill="var(--muted)" font-family="Rajdhani,sans-serif" letter-spacing="1">${o.cl || ""}</text><text y="13" text-anchor="middle" font-size="27" font-weight="700" fill="var(--ink)" font-family="Rajdhani,sans-serif">${o.cv}<tspan font-size="11" fill="var(--muted)" dx="2">${o.cu || ""}</tspan></text>`;
   else {
@@ -501,12 +503,12 @@ function roseSvg(o){
   }
   // onada: icona + alçada per fora de la rosa, al costat d'on ve
   let wl = "";
-  if(o.wdir!=null){ const [x,y] = P(o.wdir, R+17), t = o.wave!=null ? `${r1(o.wave)} m` : "";
+  if(o.wdir!=null){ const [x,y] = P(o.wdir, R+17*Z), t = o.wave!=null ? `${r1(o.wave)} m` : "";
     // la lletra de la direcció que tapa la icona es posa just a sobre; a dalt i a baix de tot no hi cabria i va al costat
     const wLbl = wHide >= 0 ? `<text ${Math.abs(y) > 90 ? `x="-16" y="${t ? -2 : 4}" text-anchor="end"` : `y="${t ? -20 : -13}" text-anchor="middle"`} font-size="11" font-weight="700" fill="${isOffshore(wHide*45) ? "var(--marg)" : "var(--sea)"}" font-family="Rajdhani,sans-serif" letter-spacing=".5">${WABBR[wHide]}</text>` : "";
-    g += `<g class="rose-wave" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><g class="upr"><g transform="translate(-12 -${t?18:11})" fill="none" stroke="var(--wave-l)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${WAVE_IC.map(d => `<path d="${d}"/>`).join("")}</g>${t ? `<text y="14" text-anchor="middle" font-size="13" font-weight="700" fill="var(--wave-l)" font-family="Rajdhani,sans-serif">${t}</text>` : ""}${wLbl}</g></g>`;
+    g += `<g class="rose-wave" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${Z})"><g class="upr"><g transform="translate(-12 -${t?18:11})" fill="none" stroke="var(--wave-l)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${WAVE_IC.map(d => `<path d="${d}"/>`).join("")}</g>${t ? `<text y="14" text-anchor="middle" font-size="13" font-weight="700" fill="var(--wave-l)" font-family="Rajdhani,sans-serif">${t}</text>` : ""}${wLbl}</g></g>`;
     wl = `, onada de ${windName(o.wdir)}${o.wave!=null ? ` de ${r1(o.wave)} m` : ""}`; }
-  const vb = o.card ? "-144 -144 288 288" : "-136 -136 272 272";
+  const vb = o.card ? "-163 -163 326 326" : "-136 -136 272 272";
   return `<svg viewBox="${vb}" role="img" aria-label="Vent de ${windName(o.dir)} a ${r0(o.wind)} nusos${wl}, amb l'histograma de direccions d'avui">${bg}<g class="rose-rot">${g}</g>${fx}<path class="cmp-mark" d="M0 -${R+19}l-6 -9h12z" fill="var(--accent)"/></svg>`;
 }
 

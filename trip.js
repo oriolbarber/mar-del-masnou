@@ -356,7 +356,7 @@ function renderRide(d){
       hist: roseHist(OBS.key === stKey ? OBS.recs : [], []), cog, home: home ? home.b : null, cv: sog != null ? r1(sog) : "–", cu: "kn", cl: "VEL."});
     cmpApply();
     $("rideCgrid").innerHTML =
-      rcell(`<i class="lg lg-cog" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 15V5" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round"/><path d="M8 1l4.5 6h-9z" fill="var(--accent)"/></svg></i>Rumb`, cog != null ? r0(cog) + "°" : "–", "", cog != null ? cogName(cog) : "&nbsp;") +
+      rcell(`<i class="lg lg-cog" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 .5 15 8h-4.2v7.5H5.2V8H1z" fill="var(--accent)"/></svg></i>Rumb`, cog != null ? r0(cog) + "°" : "–", "", cog != null ? cogName(cog) : "&nbsp;") +
       rcell(`<i class="lg" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 14L3 2.5A12 12 0 0 1 13 2.5Z" fill="var(--${w ? lvWind(w.wind, c) : "ink"})" fill-opacity=".38" stroke="var(--${w ? lvWind(w.wind, c) : "ink"})" stroke-width="1.6" stroke-linejoin="round"/></svg></i>Vent`, w ? r0(w.wind) : "–", "kn", w ? windAbbr(w.dir) + " · ratxa " + r0(w.gust) : "&nbsp;") +
       rcell(`<i class="lg" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="7.5" fill="var(--ideal)"/><path d="M4.5 8.5 8 5l3.5 3.5M5.5 7.6v3.6h5V7.6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg></i>Base`, home ? home.d.toFixed(2).replace(".", ",") : "–", "nm", home ? cogName(home.b) : "&nbsp;");
   }
