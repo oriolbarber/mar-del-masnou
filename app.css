@@ -812,3 +812,8 @@ body.cam-open{overflow:hidden}
 .hc-read>.rd-m{flex-basis:100%;margin-left:0;justify-content:flex-start;gap:6px}
 .hc-read>.rd-m span{white-space:normal}
 .hc-read .rd-why>span{white-space:nowrap}
+/* lletra gran: el botó de calendari, estret (només la icona, o la icona i el dia triat) */
+.bday{grid-template-columns:1fr 1fr auto}
+.bday .day-cal{min-width:72px;padding:0 12px}
+.bday .day-cal small{display:none}
+.bday .day-cal svg{width:28px;height:28px}
