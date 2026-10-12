@@ -313,12 +313,14 @@ const dirArrow = (deg, sz) => deg == null ? "" : `<svg class="rarw" width="${sz}
 function setEco(){ $("ride").classList.toggle("eco", !!(LIVE && LIVE.eco)); if(LIVE) $("rideEco").setAttribute("aria-pressed", String(!!LIVE.eco)); if(LIVE && LIVE.eco && ridePage === "map") rideShowPage("data"); }
 function showRide(on){
   rideVisible = !!on && !!LIVE; $("ride").hidden = !rideVisible; document.body.classList.toggle("riding", rideVisible);
-  if(!rideVisible){ if(liveMapEl === "rideMap") destroyLiveMap(); return; }
+  if(!rideVisible){ if(liveMapEl === "rideMap") destroyLiveMap(); window.rideCmpOn = false; cmpListen(); return; }
   setEco(); rideShowPage(ridePage); rideConfirm(false); renderLive();
 }
 function rideShowPage(pg){
   if(LIVE && LIVE.eco) pg = "data";
-  ridePage = pg; $("rideData").hidden = pg !== "data"; $("rideMapP").hidden = pg !== "map";
+  ridePage = pg; $("rideData").hidden = pg !== "data"; $("rideMapP").hidden = pg !== "map"; $("rideCmpP").hidden = pg !== "cmp";
+  window.rideCmpOn = pg === "cmp" && !!LIVE; cmpListen();
+  if(pg === "cmp") setTimeout(renderLive, 0);
   document.querySelectorAll("#rideSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.rp === pg)));
   if(pg === "map"){ setTimeout(() => { renderLive(); liveMap && liveMap.invalidateSize(); }, 0); } else if(liveMapEl === "rideMap") destroyLiveMap();
 }
@@ -347,6 +349,17 @@ function renderRide(d){
     rcell("En moviment", fmtDurShort(s.movingS*1000).replace(" min", "").replace(" h ", ":"), s.movingS >= 3600 ? "h" : "min", P.length + " punts GPS"));
   $("rideGrid").innerHTML = cells.join("");
   if(ridePage === "map") $("rideMini").innerHTML = `<b>${sog != null ? r1(sog) : "–"}</b> kn · <b>${s.distNm.toFixed(2).replace(".", ",")}</b> nm${home ? ` · base ${home.d.toFixed(1).replace(".", ",")} nm ${dirArrow(home.b, 14)}` : ""}`;
+  if(ridePage === "cmp"){
+    window.rideCogH = sog != null && sog > 1 && cog != null ? cog : null;   // sense brúixola: la rosa s'orienta amb el rumb
+    const c = crit[act];
+    $("rideRose").innerHTML = roseSvg({k: w ? lvWind(w.wind, c) : null, dir: w?.dir, wind: w?.wind, wdir: DATA?.now?.wdir, wave: DATA?.now?.wave,
+      hist: roseHist(OBS.key === stKey ? OBS.recs : [], []), cog, home: home ? home.b : null, cv: sog != null ? r1(sog) : "–", cu: "kn", cl: "VEL."});
+    cmpApply();
+    $("rideCgrid").innerHTML =
+      rcell("Rumb", cog != null ? r0(cog) + "°" : "–", "", cog != null ? cogName(cog) : "&nbsp;") +
+      rcell("Vent", w ? r0(w.wind) : "–", "kn", w ? windAbbr(w.dir) + " · ratxa " + r0(w.gust) : "&nbsp;") +
+      rcell("Base", home ? home.d.toFixed(2).replace(".", ",") : "–", "nm", home ? cogName(home.b) : "&nbsp;");
+  }
   const g = $("liveGap"); $("rideGap").hidden = g.hidden; $("rideGap").innerHTML = g.innerHTML;
 }
 function rideTime(){ if(!LIVE) return; const m = Math.floor((Date.now() - LIVE.start)/60000); $("rideTime").textContent = Math.floor(m/60) + ":" + pad(m%60); }
@@ -354,7 +367,9 @@ function rideTime(){ if(!LIVE) return; const m = Math.floor((Date.now() - LIVE.s
 function rideToggleEco(){ if(!LIVE) return; LIVE.eco = !LIVE.eco; store.set("mm_eco", LIVE.eco); $("ecoMode").checked = LIVE.eco;
   if(watchId != null) navigator.geolocation.clearWatch(watchId); watchId = null; clearInterval(ecoTimer); ecoTimer = null;
   startWatch(); saveLive(); setEco(); renderLive(); }
-$("rideSeg").addEventListener("click", e => { const b = e.target.closest("[data-rp]"); if(b) rideShowPage(b.dataset.rp); });
+$("rideSeg").addEventListener("click", async e => { const b = e.target.closest("[data-rp]"); if(!b) return;
+  if(b.dataset.rp === "cmp") await cmpPerm();   // iPhone: cal demanar permís al sensor en tocar
+  rideShowPage(b.dataset.rp); });
 $("rideHide").addEventListener("click", () => { showRide(false); go("fc"); });
 $("rideEco").addEventListener("click", rideToggleEco);
 $("rideStop").addEventListener("click", () => rideConfirm(true));

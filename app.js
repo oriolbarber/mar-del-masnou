@@ -470,26 +470,50 @@ function roseSvg(o){
   // con de la direcció del vent actual (l'onada es dibuixa al final, per fora de la circumferència)
   if(o.dir!=null){ const [x0,y0] = P(o.dir-11, R), [x1,y1] = P(o.dir+11, R), [xc,yc] = P(o.dir, ri-6);
     g += `<g class="needle"><path d="M${xc.toFixed(1)} ${yc.toFixed(1)} L${x0.toFixed(1)} ${y0.toFixed(1)} A${R} ${R} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${o.k ? `var(--${o.k})` : "var(--ink)"}" fill-opacity=".38" stroke="${o.k ? `var(--${o.k})` : "var(--ink)"}" stroke-width="2"/></g>`; }
+  // pantalla de ruta: rumb del GPS (agulla blava) i direcció cap a la base (punt verd)
+  if(o.cog!=null){ const [x0,y0] = P(o.cog, ri-2), [x1,y1] = P(o.cog, R-6), [a1,b1] = P(o.cog, R+2), [a2,b2] = P(o.cog-5, R-12), [a3,b3] = P(o.cog+5, R-12);
+    g += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/><polygon points="${a1.toFixed(1)},${b1.toFixed(1)} ${a2.toFixed(1)},${b2.toFixed(1)} ${a3.toFixed(1)},${b3.toFixed(1)}" fill="var(--accent)"/>`; }
+  if(o.home!=null){ const [x,y] = P(o.home, R-14); g += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><g class="upr"><circle r="11" fill="var(--ideal)" stroke="var(--surface)" stroke-width="2"/><path d="M-5 1 0-4 5 1M-3.5 0v4.5h7V0" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></g></g>`; }
   let fx = `<circle r="${ri-4}" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>`;
+  if(o.cv != null) fx += `<text y="-13" text-anchor="middle" font-size="10" font-weight="700" fill="var(--muted)" font-family="Rajdhani,sans-serif" letter-spacing="1">${o.cl || ""}</text><text y="13" text-anchor="middle" font-size="27" font-weight="700" fill="var(--ink)" font-family="Rajdhani,sans-serif">${o.cv}<tspan font-size="11" fill="var(--muted)" dx="2">${o.cu || ""}</tspan></text>`;
+  else {
   fx += `<g transform="translate(-9 -27)" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round"><path d="M1 5h9a2.5 2.5 0 1 0-2.5-2.5M1 9h13a2.5 2.5 0 1 1-2.5 2.5M1 13h6"/></g>`;
   fx += `<text y="12" text-anchor="middle" font-size="26" font-weight="700" fill="var(--ink)" font-family="Rajdhani,sans-serif">${r0(o.wind)}<tspan font-size="11" fill="var(--muted)" dx="2">kn</tspan></text>`;
+  }
   // onada: icona + alçada per fora de la rosa, al costat d'on ve
   let wl = "";
   if(o.wdir!=null){ const [x,y] = P(o.wdir, R+17), t = o.wave!=null ? `${r1(o.wave)} m` : "";
     g += `<g class="rose-wave" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><g class="upr"><g transform="translate(-12 -${t?18:11})" fill="none" stroke="var(--wave-l)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${WAVE_IC.map(d => `<path d="${d}"/>`).join("")}</g>${t ? `<text y="14" text-anchor="middle" font-size="13" font-weight="700" fill="var(--wave-l)" font-family="Rajdhani,sans-serif">${t}</text>` : ""}</g></g>`;
     wl = `, onada de ${windName(o.wdir)}${o.wave!=null ? ` de ${r1(o.wave)} m` : ""}`; }
-  return `<svg viewBox="-136 -136 272 272" role="img" aria-label="Vent de ${windName(o.dir)} a ${r0(o.wind)} nusos${wl}, amb l'histograma de direccions d'avui">${bg}<g id="roseRot">${g}</g>${fx}<path class="cmp-mark" d="M0 -${R+19}l-6 -9h12z" fill="var(--accent)"/></svg>`;
+  return `<svg viewBox="-136 -136 272 272" role="img" aria-label="Vent de ${windName(o.dir)} a ${r0(o.wind)} nusos${wl}, amb l'histograma de direccions d'avui">${bg}<g class="rose-rot">${g}</g>${fx}<path class="cmp-mark" d="M0 -${R+19}l-6 -9h12z" fill="var(--accent)"/></svg>`;
 }
 
 /* ---------- brúixola: la rosa s'orienta com el món real ---------- */
 // Amb la brúixola activa, el nord de la rosa apunta al nord de veritat; el triangle de dalt és cap on mira el mòbil.
 let cmpOn = false, cmpH = null, cmpU = 0, cmpGot = false;
+// La rosa de la pantalla de ruta gira sempre: amb la brúixola si n'hi ha, i si no, amb el rumb del GPS (rideCogH).
+window.rideCmpOn = false; window.rideCogH = null;
 function cmpApply(){
-  const g = document.getElementById("roseRot"), sv = g && g.ownerSVGElement; if(!g) return;
-  sv.classList.toggle("cmp", cmpOn && cmpH != null);
-  const a = cmpOn && cmpH != null ? -cmpU : 0;
-  g.style.transform = `rotate(${a}deg)`;
-  g.querySelectorAll(".upr").forEach(t => t.style.transform = `rotate(${-a}deg)`);
+  document.querySelectorAll(".rose-rot").forEach(g => {
+    const sv = g.ownerSVGElement, ride = !!g.closest("#ride");
+    const h = ride ? (cmpH != null ? cmpU : window.rideCogH) : (cmpOn && cmpH != null ? cmpU : null);
+    sv.classList.toggle("cmp", h != null);
+    const a = h != null ? -h : 0;
+    g.style.transform = `rotate(${a}deg)`;
+    g.querySelectorAll(".upr").forEach(t => t.style.transform = `rotate(${-a}deg)`);
+  });
+  const src = document.getElementById("rideCsrc");
+  if(src && window.rideCmpOn) src.textContent = cmpH != null ? "Orientada amb la brúixola: dalt = cap on mires" : window.rideCogH != null ? "Orientada amb el rumb: dalt = cap on navegues" : "Nord a dalt";
+}
+let cmpListening = false;
+function cmpListen(){
+  const need = cmpOn || window.rideCmpOn, ev = "ondeviceorientationabsolute" in window ? "deviceorientationabsolute" : "deviceorientation";
+  if(need && !cmpListening){ addEventListener(ev, cmpRead); cmpListening = true; }
+  if(!need && cmpListening){ removeEventListener(ev, cmpRead); cmpListening = false; cmpH = null; }
+}
+async function cmpPerm(){
+  try{ if(typeof DeviceOrientationEvent !== "undefined" && DeviceOrientationEvent.requestPermission) return await DeviceOrientationEvent.requestPermission() === "granted"; }catch(e){ return false; }
+  return true;
 }
 function cmpRead(e){
   let h = null;
@@ -503,12 +527,10 @@ function cmpRead(e){
 }
 async function cmpToggle(){
   const b = $("cmpBtn");
-  if(cmpOn){ cmpOn = false; removeEventListener("deviceorientationabsolute", cmpRead); removeEventListener("deviceorientation", cmpRead); cmpH = null; cmpApply(); b.setAttribute("aria-pressed","false"); return; }
-  try{ if(typeof DeviceOrientationEvent !== "undefined" && DeviceOrientationEvent.requestPermission){
-    if(await DeviceOrientationEvent.requestPermission() !== "granted"){ showMsg("Sense permís per fer servir la brúixola del mòbil."); return; } } }catch(e){}
-  cmpOn = true; cmpGot = false; b.setAttribute("aria-pressed","true");
-  if("ondeviceorientationabsolute" in window) addEventListener("deviceorientationabsolute", cmpRead); else addEventListener("deviceorientation", cmpRead);
-  setTimeout(() => { if(cmpOn && !cmpGot){ showMsg("Aquest mòbil o navegador no dona la brúixola: la rosa es queda amb el nord a dalt."); cmpOn = false; b.setAttribute("aria-pressed","false"); cmpApply(); } }, 2500);
+  if(cmpOn){ cmpOn = false; cmpListen(); cmpApply(); b.setAttribute("aria-pressed","false"); return; }
+  if(!await cmpPerm()){ showMsg("Sense permís per fer servir la brúixola del mòbil."); return; }
+  cmpOn = true; cmpGot = false; b.setAttribute("aria-pressed","true"); cmpListen();
+  setTimeout(() => { if(cmpOn && !cmpGot){ showMsg("Aquest mòbil o navegador no dona la brúixola: la rosa es queda amb el nord a dalt."); cmpOn = false; b.setAttribute("aria-pressed","false"); cmpListen(); cmpApply(); } }, 2500);
 }
 document.addEventListener("click", e => { if(e.target.closest && e.target.closest("#cmpBtn")) cmpToggle(); });
 

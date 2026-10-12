@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=67">
+<link rel="stylesheet" href="app.css?v=68">
 </head>
 <body>
 <div class="app">
@@ -201,11 +201,16 @@
     <span class="ride-gps" id="rideGps">GPS…</span>
   </div>
   <div class="seg ride-seg" role="group" aria-label="Què vols veure" id="rideSeg">
-    <button type="button" data-rp="data" aria-pressed="true">Dades</button><button type="button" data-rp="map" aria-pressed="false">Mapa</button>
+    <button type="button" data-rp="data" aria-pressed="true">Dades</button><button type="button" data-rp="map" aria-pressed="false">Mapa</button><button type="button" data-rp="cmp" aria-pressed="false">Brúixola</button>
   </div>
   <div class="ride-page" id="rideData">
     <div class="ride-hero"><span class="rl">Velocitat</span><span class="rv" id="rSog">–</span><span class="ru" id="rSogU">kn</span></div>
     <div class="ride-grid" id="rideGrid"></div>
+  </div>
+  <div class="ride-page ride-cmp" id="rideCmpP" hidden>
+    <div class="ride-rose" id="rideRose"></div>
+    <div class="ride-csrc" id="rideCsrc"></div>
+    <div class="ride-cgrid" id="rideCgrid"></div>
   </div>
   <div class="ride-page ride-mp" id="rideMapP" hidden>
     <div class="ride-map" id="rideMap"></div>
@@ -291,9 +296,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=67"></script>
-<script src="trip.js?v=67"></script>
-<script src="maps.js?v=67"></script>
-<script src="windmap.js?v=67"></script>
+<script src="app.js?v=68"></script>
+<script src="trip.js?v=68"></script>
+<script src="maps.js?v=68"></script>
+<script src="windmap.js?v=68"></script>
 </body>
 </html>
