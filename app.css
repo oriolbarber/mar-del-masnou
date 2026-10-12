@@ -817,3 +817,6 @@ body.cam-open{overflow:hidden}
 .bday .day-cal{min-width:72px;padding:0 12px}
 .bday .day-cal small{display:none}
 .bday .day-cal svg{width:28px;height:28px}
+.cmp-btn{top:auto;bottom:0;right:0}
+.now-grid>.rose{align-self:stretch;justify-content:center;padding-bottom:30px}
+.cmp-btn{bottom:-4px}
