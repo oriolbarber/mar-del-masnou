@@ -446,7 +446,10 @@ function roseHist(recs, fc){
 // Hores de previsió d'avui que queden (de la propera hora fins a la posta)
 function roseForecast(){
   if(!DATA) return []; const td = todayDate(), i = DATA.daily.time.indexOf(td), set = i >= 0 ? new Date(DATA.daily.sunset[i]).getHours() : 20, nh = +nowKey().slice(11,13);
-  const out = []; for(let h = nh + 1; h <= set; h++){ const p = DATA.hours[hourKey(td, h)]; if(p) out.push(p); } return out;
+  // Optimista / Pessimista trien model segons l'embarcació: l'histograma ha de ser el mateix per a totes,
+  // així que llavors fa servir el model que més encerta (o la base d'Open-Meteo)
+  const per = model === "opt" || model === "pes", bk = store.get("mm_model_best") || "auto", alt = per && MODELS[bk]?.api ? DATA.alt?.[MODELS[bk].api] : null;
+  const out = []; for(let h = nh + 1; h <= set; h++){ const k = hourKey(td, h), p = per ? (alt?.[k] ? Object.assign({}, DATA.base[k], alt[k]) : DATA.base[k]) : DATA.hours[k]; if(p) out.push(p); } return out;
 }
 // icona d'onada (dibuixada a l'editor d'icones, graella 24×24)
 const WAVE_IC = ["M4 10.5C6 8 3 5.5 7 9C9 11 10.5 11 12 9C13.5 7 9.5 5 16.5 9C18 10 19.5 11 18 10","M4 17C6.5 13.5 3 12 7.5 15.5C9 17 10.5 17 12 15C13.5 13 10 11.5 16.5 15C18 16 19.5 17 16.5 15"];

@@ -595,7 +595,7 @@ details.vp-sec[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
 
 /* brúixola de la rosa */
 .rose{position:relative}
-.cmp-btn{position:absolute;top:-4px;right:-4px;z-index:1;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface-2);color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
+.cmp-btn{position:absolute;top:2px;right:2px;z-index:1;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface-2);color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
 .cmp-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .rose-rot{transition:transform .25s linear}
 .rose-rot .upr{transform-box:fill-box;transform-origin:center;transition:transform .25s linear}
@@ -764,3 +764,4 @@ body.cam-open{overflow:hidden}
 .ride-cgrid .rc{padding:6px 8px}
 .ride-csrc{text-align:center;font-size:.8rem;font-weight:700;color:var(--rm)}
 .ride-rose svg.cmp .cmp-mark{display:none}
+.cmp-btn svg{display:block}
