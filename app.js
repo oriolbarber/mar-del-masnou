@@ -156,10 +156,10 @@ const BUOY = {name:"boia de Barcelona", url:"https://portus.puertos.es/portussvr
 let BU = store.get("mm_buoy") || {at:0, hours:{}};
 const HMAX_K = 1.6; // l'onada més alta d'una hora sol ser ~1,6 vegades l'altura significant (a la boia avui: 1,4–2,2)
 const STATIONS = {
-  ocata:  {name:"Ocata Vent", url:"https://ocata2.meteoelmasnou.cat/meteotemplateLive.txt"},
+  ocata:  {name:"Ocata", url:"https://ocata2.meteoelmasnou.cat/meteotemplateLive.txt"},
   masnou: {name:"El Masnou",  url:"https://www.meteoelmasnou.cat/meteotemplateLive.txt"}
 };
-// Per defecte, El Masnou: l'anemòmetre d'Ocata Vent està arrecerat i marca un 40–80 % del vent real (comprovat oct. 2026)
+// Per defecte, El Masnou: l'anemòmetre de l'estació d'Ocata està arrecerat i marca un 40–80 % del vent real (comprovat oct. 2026)
 let stKey = store.get("mm_station_v3"); if(!STATIONS[stKey]) stKey = "masnou";
 
 async function getJSON(u){ const r = await fetch(u, {cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }

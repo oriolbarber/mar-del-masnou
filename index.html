@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="app.css?v=83">
+<link rel="stylesheet" href="app.css?v=84">
 </head>
 <body>
 <div class="app">
@@ -141,7 +141,15 @@
   </button>
 
   <footer>
-    <div>Previsió: Open-Meteo (AROME/ECMWF; onatge MFWAM/ECMWF). Vent mesurat: estació El Masnou (o la d'Ocata Vent). Vent en nusos, onades en metres.</div>
+    <div class="src-line"><span><b>Dades:</b> Open-Meteo · meteoelmasnou.cat · Ports de l'Estat · Meteocat · Generalitat</span>
+      <button class="ib-i" type="button" data-info="iSrc" aria-label="D'on vénen les dades" aria-expanded="false">i</button></div>
+    <div class="vp-info" id="iSrc" hidden>
+      <p><b>Previsió:</b> Open-Meteo (models AROME, ICON, ECMWF i UKMO; onatge MFWAM).</p>
+      <p><b>Vent mesurat:</b> estacions del Masnou i d'Ocata de meteoelmasnou.cat.</p>
+      <p><b>Onada mesurada:</b> boia Barcelona II de Ports de l'Estat.</p>
+      <p><b>Avisos:</b> Meteocat. <b>Bandera de les platges:</b> Generalitat de Catalunya.</p>
+      <p>Vent en nusos, onades en metres.</p>
+    </div>
     
     <div id="updated"></div>
   </footer>
@@ -296,9 +304,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=83"></script>
-<script src="trip.js?v=83"></script>
-<script src="maps.js?v=83"></script>
-<script src="windmap.js?v=83"></script>
+<script src="app.js?v=84"></script>
+<script src="trip.js?v=84"></script>
+<script src="maps.js?v=84"></script>
+<script src="windmap.js?v=84"></script>
 </body>
 </html>

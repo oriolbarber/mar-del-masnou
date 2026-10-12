@@ -834,3 +834,8 @@ body.cam-open{overflow:hidden}
 .top{transition:transform .25s ease, box-shadow .25s ease;will-change:transform}
 .top.hide{transform:translateY(calc(-100% - env(safe-area-inset-top,0px) - 4px))}
 .top.lift{box-shadow:0 2px 10px rgba(0,0,0,.08)}
+
+footer .src-line{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:nowrap}
+footer .src-line>span{min-width:0}
+footer .ib-i{width:26px;height:26px;font-size:.85rem}
+footer #iSrc{text-align:left;margin:8px 0}
